@@ -1,0 +1,28 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Memory-Augmented Chatbot — dependencies
+# Python 3.11+ recommended (developed on 3.13). All providers are FREE-tier.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# --- Part 0: foundation (LLM clients, embeddings, API, config) ---
+google-genai>=0.8.0          # Gemini 2.0 Flash + text-embedding-004 (AI Studio free tier)
+groq>=0.11.0                 # Llama 3.3 70B for fast routing (Groq free tier)
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+python-dotenv>=1.0.0
+tenacity>=8.2.0              # retry/backoff around free-tier rate limits
+numpy>=1.26.0
+httpx>=0.27.0
+
+# --- Dev / testing ---
+pytest>=8.0.0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Added in later parts (kept here as a roadmap; uncomment when we reach the part)
+# ─────────────────────────────────────────────────────────────────────────────
+# Part 1 (data pipeline):     beautifulsoup4  lxml  requests  tqdm
+# Part 2 (vector store/RAG):  chromadb
+# Part 3 (knowledge graph):   neo4j           # Neo4j Aura free tier driver
+# Part 6 (orchestration):     langgraph  langchain-core
+# Part 9 (evaluation):        ragas  datasets
