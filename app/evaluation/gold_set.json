@@ -1,0 +1,12 @@
+[
+  {"query": "What is the plot of Avatar?", "imdb_id": "tt0499549", "note": "plot"},
+  {"query": "Who directed Titanic?", "imdb_id": "tt0120338", "note": "director"},
+  {"query": "How did critics react to Joker?", "imdb_id": "tt7286456", "note": "reception"},
+  {"query": "What is the Barbie movie about?", "imdb_id": "tt1517268", "note": "plot"},
+  {"query": "Tell me about the production of Avengers: Endgame", "imdb_id": "tt4154796", "note": "production"},
+  {"query": "What awards did Top Gun: Maverick receive?", "imdb_id": "tt1745960", "note": "accolades"},
+  {"query": "Who stars in Black Panther?", "imdb_id": "tt1825683", "note": "cast"},
+  {"query": "How much did Jurassic World make at the box office?", "imdb_id": "tt0369610", "note": "box office"},
+  {"query": "What is the story of Frozen, the Disney film?", "imdb_id": "tt2294629", "note": "plot"},
+  {"query": "Tell me about the James Bond film Skyfall", "imdb_id": "tt1074638", "note": "general"}
+]

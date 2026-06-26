@@ -19,6 +19,9 @@ httpx>=0.27.0
 beautifulsoup4>=4.12.0
 lxml>=5.0.0
 
+# --- Part 2: vector store / RAG ---
+chromadb>=0.5.0
+
 # --- Dev / testing ---
 pytest>=8.0.0
 
@@ -26,7 +29,7 @@ pytest>=8.0.0
 # Added in later parts (kept here as a roadmap; uncomment when we reach the part)
 # ─────────────────────────────────────────────────────────────────────────────
 # Part 1 (data pipeline):     DONE — beautifulsoup4 + lxml added above
-# Part 2 (vector store/RAG):  chromadb
+# Part 2 (vector store/RAG):  DONE — chromadb added above
 # Part 3 (knowledge graph):   neo4j           # Neo4j Aura free tier driver
 # Part 6 (orchestration):     langgraph  langchain-core
 # Part 9 (evaluation):        ragas  datasets

@@ -21,6 +21,7 @@ env/
 data/raw/
 data/processed/
 data/cache/
+data/chroma/
 *.db
 *.sqlite
 *.sqlite3

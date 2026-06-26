@@ -8,6 +8,7 @@ provider never ripples outward.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 Role = str  # "system" | "user" | "assistant"
@@ -50,3 +51,29 @@ class LLMClient(ABC):
             messages.append(ChatMessage("system", system))
         messages.append(ChatMessage("user", prompt))
         return self.complete(messages, temperature=temperature, max_tokens=max_tokens)
+
+    # ----- streaming -----
+    def stream(
+        self,
+        messages: list[ChatMessage],
+        *,
+        temperature: float = 0.2,
+        max_tokens: int | None = None,
+    ) -> Iterator[str]:
+        """Yield the reply incrementally. Providers without native streaming
+        fall back to yielding the full reply once."""
+        yield self.complete(messages, temperature=temperature, max_tokens=max_tokens)
+
+    def generate_stream(
+        self,
+        prompt: str,
+        *,
+        system: str | None = None,
+        temperature: float = 0.2,
+        max_tokens: int | None = None,
+    ) -> Iterator[str]:
+        messages: list[ChatMessage] = []
+        if system:
+            messages.append(ChatMessage("system", system))
+        messages.append(ChatMessage("user", prompt))
+        yield from self.stream(messages, temperature=temperature, max_tokens=max_tokens)

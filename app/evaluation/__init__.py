@@ -1,4 +1,9 @@
-"""Part 9 — Evaluation framework. Context relevance, faithfulness and answer
-correctness (RAGAS-style + LLM-as-judge) over a small gold set. Empty
-placeholder for now.
+"""Part 9 — Evaluation framework (lite retrieval eval landed early, in Part 2).
+
+Hit@1 / Hit@k / MRR over a small gold set (context-relevance proxy). RAGAS-style
+faithfulness and answer-correctness come in the full Part 9.
 """
+
+from app.evaluation.retrieval_eval import EvalResult, evaluate, load_gold
+
+__all__ = ["EvalResult", "evaluate", "load_gold"]

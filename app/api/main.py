@@ -12,9 +12,10 @@ from __future__ import annotations
 import logging
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app import __version__
-from app.api.schemas import ChatRequest, ChatResponse
+from app.api.schemas import ChatRequest
 from app.config import get_settings
 from app.logging_config import setup_logging
 
@@ -56,33 +57,47 @@ def info() -> dict:
     }
 
 
-@app.post("/chat", response_model=ChatResponse)
-def chat(req: ChatRequest) -> ChatResponse:
+@app.post("/chat")
+def chat(req: ChatRequest):
+    """Streaming RAG answer (Part 2): retrieve top-k chunks from the vector
+    store, stream a grounded, cited Gemini answer, then list the sources.
+
+    Orchestration (memory / KG / tools routing) arrives in Part 6.
+    """
     if not settings.has_gemini:
-        return ChatResponse(
-            reply="No GOOGLE_API_KEY configured — set it in .env to enable live Gemini replies.",
-            provider="none",
-            note="Part 0 scaffold",
+        return JSONResponse(
+            status_code=503,
+            content={"error": "GOOGLE_API_KEY not set — needed for retrieval + generation."},
         )
 
     # Imported lazily so the app still starts/tests without the SDK side-effects.
-    from app.llm.factory import get_llm
+    from app.rag.factory import get_rag
 
-    try:
-        reply = get_llm().generate(
-            req.message,
-            system=(
-                "You are a helpful assistant specialised in movies. "
-                "This is a Part 0 scaffold: you do not yet have RAG, a knowledge "
-                "graph, tools or long-term memory."
-            ),
+    rag = get_rag()
+    if rag.retriever.store.count() == 0:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Vector index is empty. Run: python scripts/build_index.py"},
         )
-    except Exception as exc:  # surface provider errors cleanly to the caller
-        logger.exception("Gemini call failed")
-        return ChatResponse(reply=f"LLM error: {exc}", provider="gemini", note="error")
 
-    return ChatResponse(
-        reply=reply,
-        provider="gemini",
-        note="Direct LLM — orchestration (RAG/KG/memory/tools) arrives in Part 6.",
-    )
+    def generate():
+        try:
+            sources = rag.retrieve(req.message, k=settings.rag_top_k)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("retrieval failed")
+            yield f"[retrieval error: {exc}]"
+            return
+        if not sources:
+            yield "I couldn't find anything relevant in the movie corpus."
+            return
+        try:
+            for token in rag.stream_answer(req.message, sources):
+                yield token
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("generation failed")
+            yield f"\n[generation error: {exc}]"
+        yield "\n\nSources:\n"
+        for i, s in enumerate(sources, 1):
+            yield f"  [{i}] {s.film_title} — {s.section}\n"
+
+    return StreamingResponse(generate(), media_type="text/plain")

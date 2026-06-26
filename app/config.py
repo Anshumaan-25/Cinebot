@@ -54,6 +54,10 @@ class Settings(BaseSettings):
         "contact: anshumaan.singh0099@gmail.com)"
     )
 
+    # --- RAG / vector store (Part 2) ---
+    chroma_collection: str = "film_chunks"
+    rag_top_k: int = 5
+
     # --- Paths ---
     data_dir: Path = Path("./data")
     sqlite_path: Path = Path("./data/memory.db")
@@ -90,6 +94,10 @@ class Settings(BaseSettings):
     def chunks_path(self) -> Path:
         return self.processed_dir / "chunks.jsonl"
 
+    @property
+    def chroma_dir(self) -> Path:
+        return self.data_dir / "chroma"
+
     def ensure_dirs(self) -> None:
         """Create the data directory tree if it does not yet exist."""
         for p in (
@@ -99,6 +107,7 @@ class Settings(BaseSettings):
             self.cache_dir,
             self.omdb_cache_dir,
             self.wikipedia_cache_dir,
+            self.chroma_dir,
         ):
             p.mkdir(parents=True, exist_ok=True)
 

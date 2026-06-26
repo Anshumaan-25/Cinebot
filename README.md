@@ -4,10 +4,10 @@ An intelligent movie-domain chatbot that combines **Retrieval-Augmented Generati
 a **Knowledge Graph**, **long-term user memory**, and **LangGraph-orchestrated real-time
 tools**, with an **evaluation framework** to measure response quality.
 
-> **Status: Part 1 complete.** Foundation (LLM/embedding layer, config, FastAPI
-> skeleton) + the data pipeline (Wikipedia + OMDB → cleaned, chunked corpus) are
-> in place. RAG, the knowledge graph, memory, orchestration, tools and evaluation
-> arrive in later parts (see roadmap).
+> **Status: Part 2 complete.** Foundation + data pipeline + **RAG** (Chroma vector
+> store, retriever, streaming cited answers on `/chat`) and a lite retrieval eval
+> are in place. The knowledge graph, memory, orchestration and tools arrive in
+> later parts (see roadmap).
 
 ---
 
@@ -59,11 +59,17 @@ python scripts/smoke_test.py
 # 5. Build the movie corpus (Part 1) -> data/processed/{films,chunks}.jsonl
 python scripts/build_corpus.py --n 50   # needs OMDB_API_KEY
 
-# 6. Run the API skeleton
+# 6. Build the vector index (Part 2) -> data/chroma/
+python scripts/build_index.py           # needs GOOGLE_API_KEY (text-embedding-004)
+
+# 7. (optional) Measure retrieval quality on the gold set
+python scripts/run_eval.py              # Hit@1 / Hit@5 / MRR
+
+# 8. Run the API — POST /chat streams a grounded, cited RAG answer
 uvicorn app.api.main:app --reload
 #   GET  http://127.0.0.1:8000/health
 #   GET  http://127.0.0.1:8000/info
-#   POST http://127.0.0.1:8000/chat   {"message": "Who directed Inception?"}
+#   POST http://127.0.0.1:8000/chat   {"message": "How did critics react to Joker?"}
 #   docs http://127.0.0.1:8000/docs
 ```
 
@@ -95,7 +101,7 @@ app/
   graph/               # Part 3 — knowledge graph (Neo4j Aura)
   memory/              # Part 5 — long-term memory (SQLite)
   orchestration/       # Part 6 — LangGraph router + nodes
-  tools/               # Part 7 — TMDB / live data tools
+  tools/               # Part 7 — live data tools
   evaluation/          # Part 9 — relevance / faithfulness / correctness
 data/                  # generated artifacts (gitignored)
 scripts/smoke_test.py  # live provider check
@@ -109,13 +115,13 @@ tests/                 # offline unit tests
 | Part | Module | What it adds |
 | --- | --- | --- |
 | **0** ✅ | `app/llm`, `app/api`, `config` | Foundation: LLM/embedding clients, config, API skeleton |
-| 1 | `app/data` | Scrape → clean → chunk the movie corpus |
-| 2 | `app/rag` | Embed + vector store + retriever (thin RAG end-to-end) |
+| **1** ✅ | `app/data` | Scrape → clean → chunk the movie corpus |
+| **2** ✅ | `app/rag` | Embed + Chroma vector store + retriever + streaming cited RAG + lite eval |
 | 3 | `app/graph` | Entity/relationship extraction → Neo4j Aura → NL→Cypher |
 | 4 | `app/rag` | Hybrid retrieval — fuse vector + graph (GraphRAG) |
 | 5 | `app/memory` | Per-user long-term memory (SQLite) |
 | 6 | `app/orchestration` | LangGraph router + model/memory/RAG/tool nodes |
-| 7 | `app/tools` | Real-time TMDB data tools |
+| 7 | `app/tools` | Real-time movie-data tools (TMDB geo-blocked → alt source) |
 | 8 | `app/api` | Full serving layer (sessions, history, streaming) |
 | 9 | `app/evaluation` | Context relevance / faithfulness / answer correctness |
 | 10 | — | Demo UI + logging/monitoring polish |
