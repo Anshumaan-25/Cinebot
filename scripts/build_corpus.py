@@ -11,8 +11,13 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
-from app.config import get_settings
+# Make `python scripts/build_corpus.py` runnable directly by putting the project
+# root (the parent of scripts/) on sys.path before importing the app package.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from app.config import get_settings  # noqa: E402
 from app.data.pipeline import CorpusPipeline, Stats
 from app.data.tmdb_client import TMDBClient
 from app.data.wikipedia import WikipediaSource

@@ -9,9 +9,14 @@ key are skipped (not failed), so you can run this with partial configuration.
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
-from app.config import get_settings
-from app.logging_config import setup_logging
+# Make `python scripts/smoke_test.py` runnable directly by putting the project
+# root (the parent of scripts/) on sys.path before importing the app package.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from app.config import get_settings  # noqa: E402
+from app.logging_config import setup_logging  # noqa: E402
 
 
 def main() -> int:
