@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # --- Provider API keys (free tier) ---
     google_api_key: Optional[str] = None  # Gemini 2.0 Flash + text-embedding-004
     groq_api_key: Optional[str] = None     # Llama 3.3 70B (routing)
-    tmdb_api_key: Optional[str] = None      # real-time movie data (Part 7)
+    omdb_api_key: Optional[str] = None      # structured film data (omdbapi.com)
 
     # --- Neo4j Aura (free tier) — Part 3 ---
     neo4j_uri: Optional[str] = None
@@ -39,12 +39,11 @@ class Settings(BaseSettings):
     embedding_dim: int = 768
 
     # --- Data pipeline (Part 1) ---
-    tmdb_base_url: str = "https://api.themoviedb.org/3"
-    tmdb_list_endpoint: str = "top_rated"   # builds the *static* corpus (popular/trending -> live tool, Part 7)
-    tmdb_cast_limit: int = 10               # top-N cast names kept per film
-    tmdb_review_limit: int = 10             # max reviews pulled per film
-    tmdb_min_interval: float = 0.25         # seconds between TMDB calls
-    n_films: int = 50                       # default corpus size (scale to ~500 via --n)
+    omdb_base_url: str = "https://www.omdbapi.com/"
+    omdb_min_interval: float = 0.2          # seconds between OMDB calls
+    omdb_cast_limit: int = 10               # OMDB returns ~4 main actors anyway
+    highest_grossing_page: str = "List of highest-grossing films"  # Wikipedia film list
+    n_films: int = 50                       # default corpus size (scale via --n)
     chunk_target_chars: int = 1800          # ~500-700 tokens
     chunk_overlap_chars: int = 200
     wikipedia_api_url: str = "https://en.wikipedia.org/w/api.php"
@@ -76,8 +75,8 @@ class Settings(BaseSettings):
         return self.cache_dir / "embeddings.db"
 
     @property
-    def tmdb_cache_dir(self) -> Path:
-        return self.raw_dir / "tmdb"
+    def omdb_cache_dir(self) -> Path:
+        return self.raw_dir / "omdb"
 
     @property
     def wikipedia_cache_dir(self) -> Path:
@@ -98,7 +97,7 @@ class Settings(BaseSettings):
             self.raw_dir,
             self.processed_dir,
             self.cache_dir,
-            self.tmdb_cache_dir,
+            self.omdb_cache_dir,
             self.wikipedia_cache_dir,
         ):
             p.mkdir(parents=True, exist_ok=True)
@@ -113,12 +112,12 @@ class Settings(BaseSettings):
         return bool(self.groq_api_key)
 
     @property
-    def has_neo4j(self) -> bool:
-        return bool(self.neo4j_uri and self.neo4j_password)
+    def has_omdb(self) -> bool:
+        return bool(self.omdb_api_key)
 
     @property
-    def has_tmdb(self) -> bool:
-        return bool(self.tmdb_api_key)
+    def has_neo4j(self) -> bool:
+        return bool(self.neo4j_uri and self.neo4j_password)
 
 
 @lru_cache

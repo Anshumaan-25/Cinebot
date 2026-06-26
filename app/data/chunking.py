@@ -52,7 +52,7 @@ def split_text(text: str, target_chars: int = 1800, overlap_chars: int = 200) ->
 
 
 def make_chunks(
-    tmdb_id: int,
+    imdb_id: str,
     film_title: str,
     section: str,
     source: str,
@@ -64,8 +64,8 @@ def make_chunks(
     pieces = split_text(text, target_chars=target_chars, overlap_chars=overlap_chars)
     return [
         Chunk(
-            chunk_id=f"{tmdb_id}-{source}-{_slug(section)}-{i}",
-            tmdb_id=tmdb_id,
+            chunk_id=f"{imdb_id}-{source}-{_slug(section)}-{i}",
+            imdb_id=imdb_id,
             film_title=film_title,
             section=section,
             source=source,

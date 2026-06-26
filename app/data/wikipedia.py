@@ -1,16 +1,18 @@
-"""Wikipedia source: resolve the article via Wikidata, then scrape it.
+"""Wikipedia source: the film list, the IMDb id, and the article text.
 
-Title resolution follows the requested chain: TMDB ``external_ids`` gives a
-``wikidata_id`` -> Wikidata sitelinks give the canonical en-wiki title -> we
-fetch and parse that article. A title-search fallback covers the rare film with
-no Wikidata sitelink.
+Flow for the OMDB-based pipeline:
+  1. Scrape the 'List of highest-grossing films' page -> film article titles.
+  2. For each film, get its IMDb id from Wikidata (property P345).
+  3. Fetch and parse the film's Wikipedia article (section whitelist).
 
-Extraction uses a section **whitelist** (keep Plot/Cast/Production/Reception/…)
-rather than a blacklist, so we only ingest substantive prose. All Wikimedia
-requests carry a descriptive User-Agent and are throttled to <=1 req/sec.
+All Wikimedia requests carry a descriptive User-Agent, are throttled to
+<=1 req/sec, and are cached to disk. Article extraction keeps only whitelisted
+substantive sections (Plot/Cast/Production/Reception/…).
 """
 
 from __future__ import annotations
+
+from urllib.parse import unquote
 
 from bs4 import BeautifulSoup
 
@@ -32,6 +34,12 @@ WHITELIST_KEYWORDS = (
     "accolade", "award", "legacy", "theme", "analysis", "background",
 )
 
+# Wikipedia namespaces we never treat as a film link.
+_NAMESPACES = (
+    "File", "Image", "Category", "Help", "Wikipedia", "Template",
+    "Portal", "Special", "Talk", "User", "Module", "Draft",
+)
+
 # Nodes removed entirely before extraction.
 _NOISE_SELECTORS = (
     "sup.reference", "span.mw-editsection", "style", "sup.noprint", ".mw-empty-elt",
@@ -41,6 +49,20 @@ _NOISE_ANCESTOR_CLASSES = (
     "infobox", "navbox", "reference", "reflist", "metadata", "hatnote",
     "thumb", "gallery", "sidebar", "ambox", "mbox", "navigation-not-searchable",
 )
+
+
+def _title_from_href(href: str) -> str:
+    slug = href.split("/wiki/", 1)[1] if "/wiki/" in href else href
+    slug = slug.split("#", 1)[0]
+    return unquote(slug).replace("_", " ")
+
+
+def _is_namespace_link(href: str) -> bool:
+    if "/wiki/" not in href:
+        return True
+    tail = href.split("/wiki/", 1)[1]
+    prefix = tail.split(":", 1)[0] if ":" in tail else ""
+    return prefix in _NAMESPACES
 
 
 class WikipediaSource:
@@ -65,21 +87,66 @@ class WikipediaSource:
     def close(self) -> None:
         self._client.close()
 
-    # ----- title resolution: Wikidata first, search fallback -----
-    def resolve_title(self, wikidata_id: str | None, fallback_title: str | None = None):
-        if wikidata_id:
-            title = self._enwiki_title_from_wikidata(wikidata_id)
-            if title:
-                return title, "wikidata"
-        if fallback_title:
-            title = self._search_title(fallback_title)
-            if title:
-                return title, "search"
-        return None, "none"
+    # ----- 1) the film list -----
+    def scrape_film_list(self, page_title: str, limit: int) -> list[dict]:
+        """Return up to ``limit`` films [{title, wiki_title}] from a Wikipedia
+        list page (e.g. 'List of highest-grossing films')."""
+        html = self._fetch_html(page_title)
+        if not html:
+            return []
+        return self._parse_film_list(html, limit)
 
+    def _parse_film_list(self, html: str, limit: int) -> list[dict]:
+        soup = BeautifulSoup(html, "lxml")
+        for sup in soup.select("sup.reference"):
+            sup.decompose()
+        tables = soup.select("table.wikitable")
+        # The page has several tables (timeline, by-year, ...). Target the ranked
+        # "Highest-grossing films" table specifically: it's the one with a Rank
+        # column alongside the gross column.
+        target = None
+        for table in tables:
+            headers = " ".join(th.get_text(" ", strip=True).lower() for th in table.find_all("th"))
+            if "rank" in headers and "gross" in headers:
+                target = table
+                break
+        if target is None and tables:  # fallback: richest in film links
+            target = max(tables, key=lambda t: len(self._film_rows(t)))
+        return self._film_rows(target, limit) if target is not None else []
+
+    @staticmethod
+    def _film_rows(table, limit: int | None = None) -> list[dict]:
+        listings: list[dict] = []
+        seen: set[str] = set()
+        for row in table.find_all("tr"):
+            if not row.find("td"):  # skip pure header rows
+                continue
+            # Prefer the italicised title link (handles colon titles like
+            # "Avengers: Endgame"); fall back to the first article link.
+            anchor = row.select_one("td i a[href^='/wiki/'], th i a[href^='/wiki/']")
+            if anchor is None:
+                for cand in row.select("td a[href^='/wiki/']"):
+                    href = cand.get("href", "")
+                    if "#" not in href and not _is_namespace_link(href):
+                        anchor = cand
+                        break
+            if anchor is None:
+                continue
+            wiki_title = anchor.get("title") or _title_from_href(anchor.get("href", ""))
+            if not wiki_title or wiki_title in seen:
+                continue
+            seen.add(wiki_title)
+            listings.append(
+                {"title": anchor.get_text(strip=True) or wiki_title, "wiki_title": wiki_title}
+            )
+            if limit and len(listings) >= limit:
+                break
+        return listings
+
+    # ----- 2) IMDb id via Wikidata (property P345) -----
     @with_backoff()
-    def _enwiki_title_from_wikidata(self, qid: str) -> str | None:
-        key = f"wd:{qid}"
+    def imdb_id_from_title(self, wiki_title: str) -> str | None:
+        key = f"imdb_of:{wiki_title}"
         data = self._meta_cache.get_json(key)
         if data is None:
             self._throttle.wait()
@@ -87,43 +154,27 @@ class WikipediaSource:
                 self._wd,
                 params={
                     "action": "wbgetentities",
-                    "ids": qid,
-                    "props": "sitelinks",
-                    "sitefilter": "enwiki",
+                    "sites": "enwiki",
+                    "titles": wiki_title,
+                    "props": "claims",
                     "format": "json",
                 },
             )
             resp.raise_for_status()
             data = resp.json()
             self._meta_cache.put_json(key, data)
-        try:
-            return data["entities"][qid]["sitelinks"]["enwiki"]["title"]
-        except (KeyError, TypeError):
-            return None
+        for qid, entity in data.get("entities", {}).items():
+            if qid == "-1":
+                continue
+            claims = entity.get("claims", {}).get("P345")
+            if claims:
+                try:
+                    return claims[0]["mainsnak"]["datavalue"]["value"]
+                except (KeyError, IndexError, TypeError):
+                    return None
+        return None
 
-    @with_backoff()
-    def _search_title(self, query: str) -> str | None:
-        key = f"search:{query}"
-        data = self._meta_cache.get_json(key)
-        if data is None:
-            self._throttle.wait()
-            resp = self._client.get(
-                self._api,
-                params={
-                    "action": "query",
-                    "list": "search",
-                    "srsearch": f"{query} film",
-                    "srlimit": 1,
-                    "format": "json",
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            self._meta_cache.put_json(key, data)
-        hits = data.get("query", {}).get("search", [])
-        return hits[0]["title"] if hits else None
-
-    # ----- fetch + parse -----
+    # ----- 3) article text -----
     def fetch_sections(self, title: str) -> dict[str, str]:
         html = self._fetch_html(title)
         if not html:

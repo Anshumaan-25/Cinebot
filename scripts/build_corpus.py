@@ -1,10 +1,9 @@
 """Build the movie corpus (Part 1).
 
     python scripts/build_corpus.py            # uses N_FILMS from .env (default 50)
-    python scripts/build_corpus.py --n 500    # full corpus
-    python scripts/build_corpus.py --n 20 --list popular
+    python scripts/build_corpus.py --n 200    # larger corpus
 
-Requires TMDB_API_KEY in .env. All fetches are cached, so re-runs are cheap.
+Requires OMDB_API_KEY in .env. All fetches are cached, so re-runs are cheap.
 """
 
 from __future__ import annotations
@@ -18,40 +17,40 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.config import get_settings  # noqa: E402
-from app.data.pipeline import CorpusPipeline, Stats
-from app.data.tmdb_client import TMDBClient
-from app.data.wikipedia import WikipediaSource
-from app.logging_config import setup_logging
+from app.data.omdb_client import OMDBClient  # noqa: E402
+from app.data.pipeline import CorpusPipeline, Stats  # noqa: E402
+from app.data.wikipedia import WikipediaSource  # noqa: E402
+from app.logging_config import setup_logging  # noqa: E402
 
 
-def _print_summary(stats: Stats, settings, list_name: str, cache_info: dict) -> None:
-    pct = (stats.films_processed / stats.films_requested * 100) if stats.films_requested else 0.0
-    resolved = stats.wiki_resolved_wikidata + stats.wiki_resolved_search
+def _print_summary(stats: Stats, settings, cache_info: dict) -> None:
+    pct = (stats.films_processed / stats.films_listed * 100) if stats.films_listed else 0.0
+    resolved = stats.imdb_resolved_wikidata + stats.imdb_resolved_omdb
     avg_chunks = (stats.total_chunks / stats.films_processed) if stats.films_processed else 0.0
     by_source = ", ".join(f"{k}={v}" for k, v in sorted(stats.chunks_by_source.items())) or "none"
+    oh, om = cache_info["omdb"]
+    wh, wm = cache_info["wiki"]
 
     print("\n" + "=" * 60)
     print("  CORPUS BUILD SUMMARY")
     print("=" * 60)
-    print(f"  TMDB list           : {list_name}")
-    print(f"  Films requested     : {stats.films_requested}")
+    print(f"  Film list source    : {settings.highest_grossing_page}")
+    print(f"  Films listed        : {stats.films_listed}")
     print(f"  Films processed     : {stats.films_processed} ({pct:.0f}%)")
     print(f"  Films failed        : {stats.films_failed}")
-    print("  ── Wikipedia resolution ──")
-    print(f"    via Wikidata      : {stats.wiki_resolved_wikidata}")
-    print(f"    via search        : {stats.wiki_resolved_search}")
-    print(f"    unresolved        : {stats.wiki_unresolved}")
-    print(f"    resolved total    : {resolved}/{stats.films_requested}")
-    print(f"  Films with reviews  : {stats.films_with_reviews}")
+    print("  ── IMDb id resolution ──")
+    print(f"    via Wikidata      : {stats.imdb_resolved_wikidata}")
+    print(f"    via OMDB title    : {stats.imdb_resolved_omdb}")
+    print(f"    unresolved        : {stats.imdb_unresolved}")
+    print(f"    resolved total    : {resolved}/{stats.films_listed}")
+    print(f"  OMDB details found  : {stats.omdb_found}")
     print("  ── Chunks ──")
     print(f"    total             : {stats.total_chunks}")
     print(f"    by source         : {by_source}")
     print(f"    avg per film      : {avg_chunks:.1f}")
     print(f"    total text        : {stats.total_chars / 1_000_000:.2f} M chars")
-    th, tm = cache_info["tmdb"]
-    wh, wm = cache_info["wiki"]
     print("  ── Cache (hits/misses) ──")
-    print(f"    tmdb              : {th}/{tm}")
+    print(f"    omdb              : {oh}/{om}")
     print(f"    wikipedia         : {wh}/{wm}")
     print(f"  Elapsed             : {stats.elapsed_s:.1f}s")
     print("  ── Output ──")
@@ -67,19 +66,17 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(description="Build the movie corpus (Part 1).")
     parser.add_argument("--n", type=int, default=settings.n_films, help="number of films")
-    parser.add_argument("--list", default=settings.tmdb_list_endpoint, help="TMDB list endpoint")
     args = parser.parse_args()
 
-    if not settings.has_tmdb:
-        print("ERROR: TMDB_API_KEY is not set. Add it to your .env and retry.", file=sys.stderr)
+    if not settings.has_omdb:
+        print("ERROR: OMDB_API_KEY is not set. Add it to your .env and retry.", file=sys.stderr)
         return 1
 
-    tmdb = TMDBClient(
-        settings.tmdb_api_key,
-        settings.tmdb_base_url,
-        settings.tmdb_cache_dir,
-        min_interval=settings.tmdb_min_interval,
-        cast_limit=settings.tmdb_cast_limit,
+    omdb = OMDBClient(
+        settings.omdb_api_key,
+        settings.omdb_base_url,
+        settings.omdb_cache_dir,
+        min_interval=settings.omdb_min_interval,
     )
     wiki = WikipediaSource(
         settings.wikipedia_api_url,
@@ -89,10 +86,10 @@ def main() -> int:
         min_interval=settings.wikipedia_min_interval,
     )
     pipeline = CorpusPipeline(
-        tmdb,
+        omdb,
         wiki,
-        cast_limit=settings.tmdb_cast_limit,
-        review_limit=settings.tmdb_review_limit,
+        list_page=settings.highest_grossing_page,
+        cast_limit=settings.omdb_cast_limit,
         target_chars=settings.chunk_target_chars,
         overlap_chars=settings.chunk_overlap_chars,
     )
@@ -101,22 +98,16 @@ def main() -> int:
         print(f"  [{done}/{total}] {title}")
 
     stats = None
-    cache_info = {"tmdb": (0, 0), "wiki": (0, 0)}
+    cache_info = {"omdb": (0, 0), "wiki": (0, 0)}
     try:
-        stats = pipeline.run(
-            args.n,
-            settings.films_path,
-            settings.chunks_path,
-            list_name=args.list,
-            progress=progress,
-        )
+        stats = pipeline.run(args.n, settings.films_path, settings.chunks_path, progress=progress)
     finally:
-        cache_info["tmdb"] = (tmdb.cache_hits, tmdb.cache_misses)
+        cache_info["omdb"] = (omdb.cache_hits, omdb.cache_misses)
         cache_info["wiki"] = (wiki.cache_hits, wiki.cache_misses)
-        tmdb.close()
+        omdb.close()
         wiki.close()
 
-    _print_summary(stats, settings, args.list, cache_info)
+    _print_summary(stats, settings, cache_info)
     return 0
 
 

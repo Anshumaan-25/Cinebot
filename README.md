@@ -4,9 +4,10 @@ An intelligent movie-domain chatbot that combines **Retrieval-Augmented Generati
 a **Knowledge Graph**, **long-term user memory**, and **LangGraph-orchestrated real-time
 tools**, with an **evaluation framework** to measure response quality.
 
-> **Status: Part 0 — Foundation/scaffolding complete.** The LLM/embedding layer,
-> config, and a runnable FastAPI skeleton are in place. RAG, the knowledge graph,
-> memory, orchestration, tools and evaluation arrive in later parts (see roadmap).
+> **Status: Part 1 complete.** Foundation (LLM/embedding layer, config, FastAPI
+> skeleton) + the data pipeline (Wikipedia + OMDB → cleaned, chunked corpus) are
+> in place. RAG, the knowledge graph, memory, orchestration, tools and evaluation
+> arrive in later parts (see roadmap).
 
 ---
 
@@ -16,9 +17,14 @@ Scoped to **movies** (bounded but relationship-rich, ideal for a knowledge graph
 
 | Source | Used for |
 | --- | --- |
-| Wikipedia (top ~500 films) | rich text for RAG |
-| TMDB API | entity metadata + real-time "trending" (dynamic tool) |
-| A few curated review sites | sentiment-rich retrieval text |
+| Wikipedia 'List of highest-grossing films' | the film list (scraped with BeautifulSoup) |
+| Wikipedia articles | long-form text for RAG |
+| OMDB API (omdbapi.com) | structured metadata: genre, cast, director, plot, imdbRating |
+| Wikidata (property P345) | IMDb ids — the universal key linking everything |
+
+> TMDB was the original plan but is **geo-blocked** in some regions (incl. India),
+> so we use **OMDB** for structured data and key everything by **`imdb_id`**.
+> Sentiment-rich text comes from Wikipedia "Reception" sections.
 
 ## Tech stack (all free tier — no paid APIs)
 
@@ -27,7 +33,7 @@ Scoped to **movies** (bounded but relationship-rich, ideal for a knowledge graph
 | Generation / reasoning | **Gemini 2.0 Flash** (Google AI Studio) |
 | Embeddings (corpus **and** query) | **text-embedding-004** — single model, no mixing |
 | Fast routing | **Groq · Llama 3.3 70B** |
-| Vector DB | Chroma / FAISS (Part 2) |
+| Vector DB | **Chroma** — native metadata filtering on imdb_id/section (Part 2) |
 | Knowledge graph | **Neo4j Aura** free tier (Part 3) |
 | Long-term memory | **SQLite** (Part 5) |
 | Orchestration | **LangGraph** (Part 6) |
@@ -45,12 +51,15 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 # 3. Configure keys
-cp .env.example .env        # then fill in GOOGLE_API_KEY and GROQ_API_KEY
+cp .env.example .env        # GOOGLE_API_KEY, GROQ_API_KEY, and OMDB_API_KEY
 
 # 4. Verify the providers work (skips any without a key)
 python scripts/smoke_test.py
 
-# 5. Run the API skeleton
+# 5. Build the movie corpus (Part 1) -> data/processed/{films,chunks}.jsonl
+python scripts/build_corpus.py --n 50   # needs OMDB_API_KEY
+
+# 6. Run the API skeleton
 uvicorn app.api.main:app --reload
 #   GET  http://127.0.0.1:8000/health
 #   GET  http://127.0.0.1:8000/info

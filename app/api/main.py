@@ -45,7 +45,7 @@ def info() -> dict:
             "gemini": settings.has_gemini,
             "groq": settings.has_groq,
             "neo4j_aura": settings.has_neo4j,
-            "tmdb": settings.has_tmdb,
+            "omdb": settings.has_omdb,
         },
         "models": {
             "generation": settings.gemini_model,

@@ -1,4 +1,4 @@
-"""Tiny on-disk cache so every TMDB / Wikipedia fetch happens at most once.
+"""Tiny on-disk cache so every OMDB / Wikipedia fetch happens at most once.
 
 Keys are hashed to safe filenames. Because all fetches are cached, re-running
 the pipeline is free (no repeated network calls, no re-spent quota).

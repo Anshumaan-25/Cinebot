@@ -1,8 +1,12 @@
-"""Corpus build pipeline: TMDB list -> details/ids/reviews + Wikipedia -> clean
--> chunk -> write ``films.jsonl`` (structured, for the KG) and ``chunks.jsonl``
-(retrieval units, for RAG).
+"""Corpus build pipeline (OMDB + Wikipedia).
 
-The TMDB and Wikipedia sources are injected, so the pipeline is fully testable
+Flow: scrape Wikipedia 'List of highest-grossing films' -> for each film resolve
+its IMDb id (Wikidata P345, OMDB-by-title fallback) -> OMDB structured details +
+Wikipedia article text -> clean -> chunk -> write ``films.jsonl`` (structured,
+for the KG) and ``chunks.jsonl`` (retrieval units, for RAG), both keyed by
+``imdb_id``.
+
+The OMDB and Wikipedia sources are injected, so the pipeline is fully testable
 offline with fakes. A per-film try/except keeps one bad film from killing a run.
 """
 
@@ -25,13 +29,13 @@ ProgressFn = Callable[[int, int, str], None]
 
 @dataclass
 class Stats:
-    films_requested: int = 0
+    films_listed: int = 0
     films_processed: int = 0
     films_failed: int = 0
-    wiki_resolved_wikidata: int = 0
-    wiki_resolved_search: int = 0
-    wiki_unresolved: int = 0
-    films_with_reviews: int = 0
+    imdb_resolved_wikidata: int = 0
+    imdb_resolved_omdb: int = 0
+    imdb_unresolved: int = 0
+    omdb_found: int = 0
     total_chunks: int = 0
     chunks_by_source: dict = field(default_factory=dict)
     total_chars: int = 0
@@ -43,28 +47,42 @@ class Stats:
         self.total_chars += chars
 
 
-def _year_from(*date_strings: Optional[str]) -> int | None:
-    for value in date_strings:
+def _year_from(*values: Optional[str]) -> int | None:
+    for value in values:
         if value and len(value) >= 4 and value[:4].isdigit():
             return int(value[:4])
     return None
 
 
+def _omdb_list(value: Optional[str], limit: int | None = None) -> list[str]:
+    if not value or value == "N/A":
+        return []
+    items = [x.strip() for x in value.split(",") if x.strip() and x.strip() != "N/A"]
+    return items[:limit] if limit else items
+
+
+def _float_or_none(value: Optional[str]) -> float | None:
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
 class CorpusPipeline:
     def __init__(
         self,
-        tmdb,
+        omdb,
         wiki,
         *,
+        list_page: str = "List of highest-grossing films",
         cast_limit: int = 10,
-        review_limit: int = 10,
         target_chars: int = 1800,
         overlap_chars: int = 200,
     ) -> None:
-        self.tmdb = tmdb
+        self.omdb = omdb
         self.wiki = wiki
+        self.list_page = list_page
         self.cast_limit = cast_limit
-        self.review_limit = review_limit
         self.target_chars = target_chars
         self.overlap_chars = overlap_chars
 
@@ -74,26 +92,28 @@ class CorpusPipeline:
         films_path: Path,
         chunks_path: Path,
         *,
-        list_name: str = "top_rated",
         progress: ProgressFn | None = None,
     ) -> Stats:
         stats = Stats()
         started = time.monotonic()
 
-        films = self.tmdb.top_films(n, list_name=list_name)
-        stats.films_requested = len(films)
+        listings = self.wiki.scrape_film_list(self.list_page, n)
+        stats.films_listed = len(listings)
 
         films_path.parent.mkdir(parents=True, exist_ok=True)
         with films_path.open("w", encoding="utf-8") as ff, chunks_path.open("w", encoding="utf-8") as cf:
-            for film in films:
-                title = film.get("title") or film.get("name") or ""
+            for listing in listings:
+                title = listing.get("title") or listing.get("wiki_title") or ""
                 try:
-                    record, chunks = self._process_film(film, stats)
+                    result = self._process_film(listing, stats)
                 except Exception as exc:  # noqa: BLE001 — one film must not abort the batch
                     stats.films_failed += 1
-                    logger.warning("Skipping film %r (%s): %s", title, film.get("id"), exc)
+                    logger.warning("Skipping film %r: %s", title, exc)
                     continue
+                if result is None:
+                    continue  # unresolved IMDb id — counted in stats, nothing to write
 
+                record, chunks = result
                 ff.write(record.model_dump_json() + "\n")
                 for ch in chunks:
                     cf.write(ch.model_dump_json() + "\n")
@@ -101,39 +121,59 @@ class CorpusPipeline:
 
                 stats.films_processed += 1
                 if progress:
-                    progress(stats.films_processed, stats.films_requested, title)
+                    progress(stats.films_processed, stats.films_listed, record.title)
 
         stats.elapsed_s = time.monotonic() - started
         return stats
 
-    def _process_film(self, film: dict, stats: Stats) -> tuple[FilmRecord, list[Chunk]]:
-        tmdb_id = int(film["id"])
-        title = film.get("title") or film.get("name") or ""
+    def _process_film(self, listing: dict, stats: Stats):
+        wiki_title = listing["wiki_title"]
+        display_title = listing.get("title") or wiki_title
 
-        details = self.tmdb.film_details(tmdb_id)
-        external = self.tmdb.external_ids(tmdb_id)
-        wikidata_id = external.get("wikidata_id") or None
-        imdb_id = external.get("imdb_id") or None
-
-        wiki_title, method = self.wiki.resolve_title(wikidata_id, title)
-        if method == "wikidata":
-            stats.wiki_resolved_wikidata += 1
-        elif method == "search":
-            stats.wiki_resolved_search += 1
+        # 1) IMDb id: Wikidata first, OMDB-by-title fallback.
+        imdb_id = self.wiki.imdb_id_from_title(wiki_title)
+        if imdb_id:
+            method = "wikidata"
+            stats.imdb_resolved_wikidata += 1
+            details = self.omdb.by_imdb_id(imdb_id)
         else:
-            stats.wiki_unresolved += 1
+            details = self.omdb.by_title(display_title)
+            if self.omdb.found(details) and details.get("imdbID"):
+                imdb_id = details["imdbID"]
+                method = "omdb_title"
+                stats.imdb_resolved_omdb += 1
+            else:
+                stats.imdb_unresolved += 1
+                return None
 
-        credits = details.get("credits", {})
-        record = FilmRecord(
-            tmdb_id=tmdb_id,
-            title=title,
-            year=_year_from(film.get("release_date"), details.get("release_date")),
-            overview=details.get("overview") or None,
-            genres=[g["name"] for g in details.get("genres", []) if g.get("name")],
-            cast=[c["name"] for c in credits.get("cast", [])[: self.cast_limit] if c.get("name")],
-            directors=[c["name"] for c in credits.get("crew", []) if c.get("job") == "Director"],
+        ok = self.omdb.found(details)
+        if ok:
+            stats.omdb_found += 1
+        record = self._to_record(imdb_id, details if ok else {}, wiki_title, method, display_title)
+
+        # 2) chunks: OMDB plot + whitelisted Wikipedia sections.
+        chunks: list[Chunk] = []
+        if record.overview:
+            chunks += self._chunks(imdb_id, record.title, "Plot", "omdb_plot", record.overview)
+        for section, body in self.wiki.fetch_sections(wiki_title).items():
+            chunks += self._chunks(imdb_id, record.title, section, "wikipedia", body)
+
+        return record, chunks
+
+    def _to_record(self, imdb_id, details, wiki_title, method, fallback_title) -> FilmRecord:
+        title = details.get("Title")
+        if not title or title == "N/A":
+            title = fallback_title
+        plot = details.get("Plot")
+        return FilmRecord(
             imdb_id=imdb_id,
-            wikidata_id=wikidata_id,
+            title=title,
+            year=_year_from(details.get("Year")),
+            overview=plot if plot and plot != "N/A" else None,
+            genres=_omdb_list(details.get("Genre")),
+            cast=_omdb_list(details.get("Actors"), self.cast_limit),
+            directors=_omdb_list(details.get("Director")),
+            imdb_rating=_float_or_none(details.get("imdbRating")),
             wikipedia_title=wiki_title,
             wikipedia_url=(
                 f"https://en.wikipedia.org/wiki/{wiki_title.replace(' ', '_')}"
@@ -143,26 +183,9 @@ class CorpusPipeline:
             resolution_method=method,
         )
 
-        chunks: list[Chunk] = []
-
-        if record.overview:
-            chunks += self._chunks(tmdb_id, title, "Overview", "tmdb_overview", record.overview)
-
-        if wiki_title:
-            for section, body in self.wiki.fetch_sections(wiki_title).items():
-                chunks += self._chunks(tmdb_id, title, section, "wikipedia", body)
-
-        reviews = self.tmdb.film_reviews(tmdb_id, self.review_limit)
-        if reviews:
-            stats.films_with_reviews += 1
-        for i, review in enumerate(reviews):
-            chunks += self._chunks(tmdb_id, title, f"Review {i + 1}", "tmdb_review", review)
-
-        return record, chunks
-
-    def _chunks(self, tmdb_id: int, title: str, section: str, source: str, text: str) -> list[Chunk]:
+    def _chunks(self, imdb_id, title, section, source, text) -> list[Chunk]:
         return make_chunks(
-            tmdb_id,
+            imdb_id,
             title,
             section,
             source,

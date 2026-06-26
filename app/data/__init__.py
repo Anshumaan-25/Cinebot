@@ -1,8 +1,10 @@
 """Part 1 — Data pipeline.
 
-TMDB (top films, structured metadata, reviews) + Wikipedia (long-form prose,
-resolved via Wikidata) -> clean -> section-aware chunking. Produces
-``films.jsonl`` (for the knowledge graph) and ``chunks.jsonl`` (for RAG).
+Wikipedia 'List of highest-grossing films' (the film list) + OMDB (structured
+metadata) + Wikipedia articles (long-form prose), with IMDb ids from Wikidata.
+Flow: scrape list -> resolve imdb_id -> OMDB details + article text -> clean ->
+section-aware chunking. Produces ``films.jsonl`` (for the knowledge graph) and
+``chunks.jsonl`` (for RAG), both keyed by ``imdb_id``.
 
 Entry point: ``python scripts/build_corpus.py``.
 """
