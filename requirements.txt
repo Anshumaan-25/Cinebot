@@ -15,13 +15,17 @@ tenacity>=8.2.0              # retry/backoff around free-tier rate limits
 numpy>=1.26.0
 httpx>=0.27.0
 
+# --- Part 1: data pipeline (web scraping) ---
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
 # --- Dev / testing ---
 pytest>=8.0.0
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Added in later parts (kept here as a roadmap; uncomment when we reach the part)
 # ─────────────────────────────────────────────────────────────────────────────
-# Part 1 (data pipeline):     beautifulsoup4  lxml  requests  tqdm
+# Part 1 (data pipeline):     DONE — beautifulsoup4 + lxml added above
 # Part 2 (vector store/RAG):  chromadb
 # Part 3 (knowledge graph):   neo4j           # Neo4j Aura free tier driver
 # Part 6 (orchestration):     langgraph  langchain-core

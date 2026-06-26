@@ -38,6 +38,23 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-004"
     embedding_dim: int = 768
 
+    # --- Data pipeline (Part 1) ---
+    tmdb_base_url: str = "https://api.themoviedb.org/3"
+    tmdb_list_endpoint: str = "top_rated"   # builds the *static* corpus (popular/trending -> live tool, Part 7)
+    tmdb_cast_limit: int = 10               # top-N cast names kept per film
+    tmdb_review_limit: int = 10             # max reviews pulled per film
+    tmdb_min_interval: float = 0.25         # seconds between TMDB calls
+    n_films: int = 50                       # default corpus size (scale to ~500 via --n)
+    chunk_target_chars: int = 1800          # ~500-700 tokens
+    chunk_overlap_chars: int = 200
+    wikipedia_api_url: str = "https://en.wikipedia.org/w/api.php"
+    wikidata_api_url: str = "https://www.wikidata.org/w/api.php"
+    wikipedia_min_interval: float = 1.0     # 1 req/sec (Wikimedia etiquette)
+    wikipedia_user_agent: str = (
+        "MemoryAugmentedChatbot/0.1 (educational internship project; "
+        "contact: anshumaan.singh0099@gmail.com)"
+    )
+
     # --- Paths ---
     data_dir: Path = Path("./data")
     sqlite_path: Path = Path("./data/memory.db")
@@ -58,9 +75,32 @@ class Settings(BaseSettings):
     def embedding_cache_path(self) -> Path:
         return self.cache_dir / "embeddings.db"
 
+    @property
+    def tmdb_cache_dir(self) -> Path:
+        return self.raw_dir / "tmdb"
+
+    @property
+    def wikipedia_cache_dir(self) -> Path:
+        return self.raw_dir / "wikipedia"
+
+    @property
+    def films_path(self) -> Path:
+        return self.processed_dir / "films.jsonl"
+
+    @property
+    def chunks_path(self) -> Path:
+        return self.processed_dir / "chunks.jsonl"
+
     def ensure_dirs(self) -> None:
         """Create the data directory tree if it does not yet exist."""
-        for p in (self.data_dir, self.raw_dir, self.processed_dir, self.cache_dir):
+        for p in (
+            self.data_dir,
+            self.raw_dir,
+            self.processed_dir,
+            self.cache_dir,
+            self.tmdb_cache_dir,
+            self.wikipedia_cache_dir,
+        ):
             p.mkdir(parents=True, exist_ok=True)
 
     # Convenience flags (never expose the key values themselves)
