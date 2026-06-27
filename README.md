@@ -4,10 +4,10 @@ An intelligent movie-domain chatbot that combines **Retrieval-Augmented Generati
 a **Knowledge Graph**, **long-term user memory**, and **LangGraph-orchestrated real-time
 tools**, with an **evaluation framework** to measure response quality.
 
-> **Status: Part 2 complete.** Foundation + data pipeline + **RAG** (Chroma vector
-> store, retriever, streaming cited answers on `/chat`) and a lite retrieval eval
-> are in place. The knowledge graph, memory, orchestration and tools arrive in
-> later parts (see roadmap).
+> **Status: Part 3 complete.** Foundation + data pipeline + **RAG** + a **Neo4j
+> knowledge graph** (Film/Person/Genre with DIRECTED_BY / ACTED_IN /
+> BELONGS_TO_GENRE; cast supplemented by Gemini extraction) are in place. Memory,
+> hybrid retrieval, orchestration and tools arrive in later parts (see roadmap).
 
 ---
 
@@ -65,7 +65,10 @@ python scripts/build_index.py           # needs GOOGLE_API_KEY (text-embedding-0
 # 7. (optional) Measure retrieval quality on the gold set
 python scripts/run_eval.py              # Hit@1 / Hit@5 / MRR
 
-# 8. Run the API — POST /chat streams a grounded, cited RAG answer
+# 8. Build the knowledge graph (Part 3) -> Neo4j Aura
+python scripts/build_graph.py           # needs NEO4J_* (+ GOOGLE_API_KEY for the cast supplement)
+
+# 9. Run the API — POST /chat streams a grounded, cited RAG answer
 uvicorn app.api.main:app --reload
 #   GET  http://127.0.0.1:8000/health
 #   GET  http://127.0.0.1:8000/info
@@ -98,7 +101,7 @@ app/
   api/                 # FastAPI app (skeleton in Part 0, full in Part 8)
   data/                # Part 1 — scraping / cleaning / chunking
   rag/                 # Part 2 — vector store & retrieval
-  graph/               # Part 3 — knowledge graph (Neo4j Aura)
+  kg/                  # Part 3 — Neo4j knowledge graph (graph_store, extraction)
   memory/              # Part 5 — long-term memory (SQLite)
   orchestration/       # Part 6 — LangGraph router + nodes
   tools/               # Part 7 — live data tools
@@ -117,7 +120,7 @@ tests/                 # offline unit tests
 | **0** ✅ | `app/llm`, `app/api`, `config` | Foundation: LLM/embedding clients, config, API skeleton |
 | **1** ✅ | `app/data` | Scrape → clean → chunk the movie corpus |
 | **2** ✅ | `app/rag` | Embed + Chroma vector store + retriever + streaming cited RAG + lite eval |
-| 3 | `app/graph` | Entity/relationship extraction → Neo4j Aura → NL→Cypher |
+| **3** ✅ | `app/kg` | Entity/relationship extraction (Gemini) → Neo4j Aura graph + querying |
 | 4 | `app/rag` | Hybrid retrieval — fuse vector + graph (GraphRAG) |
 | 5 | `app/memory` | Per-user long-term memory (SQLite) |
 | 6 | `app/orchestration` | LangGraph router + model/memory/RAG/tool nodes |

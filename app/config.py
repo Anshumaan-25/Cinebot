@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     chroma_collection: str = "film_chunks"
     rag_top_k: int = 5
 
+    # --- Knowledge graph (Part 3) ---
+    neo4j_database: Optional[str] = None   # None -> use the connection's home database (Aura-safe)
+    kg_min_interval: float = 4.0   # seconds between Gemini cast-extraction calls (free-tier RPM)
+
     # --- Paths ---
     data_dir: Path = Path("./data")
     sqlite_path: Path = Path("./data/memory.db")
@@ -97,6 +101,10 @@ class Settings(BaseSettings):
     @property
     def chroma_dir(self) -> Path:
         return self.data_dir / "chroma"
+
+    @property
+    def cast_cache_dir(self) -> Path:
+        return self.cache_dir / "cast_extractions"
 
     def ensure_dirs(self) -> None:
         """Create the data directory tree if it does not yet exist."""
