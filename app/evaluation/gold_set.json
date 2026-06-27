@@ -1,12 +1,17 @@
 [
-  {"query": "What is the plot of Avatar?", "imdb_id": "tt0499549", "note": "plot"},
-  {"query": "Who directed Titanic?", "imdb_id": "tt0120338", "note": "director"},
-  {"query": "How did critics react to Joker?", "imdb_id": "tt7286456", "note": "reception"},
-  {"query": "What is the Barbie movie about?", "imdb_id": "tt1517268", "note": "plot"},
-  {"query": "Tell me about the production of Avengers: Endgame", "imdb_id": "tt4154796", "note": "production"},
-  {"query": "What awards did Top Gun: Maverick receive?", "imdb_id": "tt1745960", "note": "accolades"},
-  {"query": "Who stars in Black Panther?", "imdb_id": "tt1825683", "note": "cast"},
-  {"query": "How much did Jurassic World make at the box office?", "imdb_id": "tt0369610", "note": "box office"},
-  {"query": "What is the story of Frozen, the Disney film?", "imdb_id": "tt2294629", "note": "plot"},
-  {"query": "Tell me about the James Bond film Skyfall", "imdb_id": "tt1074638", "note": "general"}
+  {"query": "What is the plot of Avatar?", "type": "lookup", "imdb_id": "tt0499549", "note": "plot"},
+  {"query": "Who directed Titanic?", "type": "lookup", "imdb_id": "tt0120338", "note": "director"},
+  {"query": "How did critics react to Joker?", "type": "lookup", "imdb_id": "tt7286456", "note": "reception"},
+  {"query": "What is the Barbie movie about?", "type": "lookup", "imdb_id": "tt1517268", "note": "plot"},
+  {"query": "Tell me about the production of Avengers: Endgame", "type": "lookup", "imdb_id": "tt4154796", "note": "production"},
+  {"query": "What awards did Top Gun: Maverick receive?", "type": "lookup", "imdb_id": "tt1745960", "note": "accolades"},
+  {"query": "Who stars in Black Panther?", "type": "lookup", "imdb_id": "tt1825683", "note": "cast"},
+  {"query": "How much did Jurassic World make at the box office?", "type": "lookup", "imdb_id": "tt0369610", "note": "box office"},
+  {"query": "What is the story of Frozen, the Disney film?", "type": "lookup", "imdb_id": "tt2294629", "note": "plot"},
+  {"query": "Tell me about the James Bond film Skyfall", "type": "lookup", "imdb_id": "tt1074638", "note": "general"},
+
+  {"query": "Which directors have made both Action and Fantasy films?", "type": "relational", "expected": ["James Cameron", "J.J. Abrams"], "note": "genre intersection (multi-hop)"},
+  {"query": "Which directors have directed both Adventure and Animation films?", "type": "relational", "expected": ["Brad Bird"], "note": "genre intersection (multi-hop)"},
+  {"query": "What films has James Cameron directed?", "type": "relational", "expected": ["Avatar", "Titanic"], "note": "director filmography"},
+  {"query": "Who is in the cast of Avatar?", "type": "relational", "expected": ["Sam Worthington"], "note": "film cast"}
 ]

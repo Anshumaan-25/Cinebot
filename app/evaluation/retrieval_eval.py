@@ -61,3 +61,36 @@ def evaluate(retriever, gold: list[dict], k: int = 5) -> EvalResult:
         mrr=reciprocal / denom,
         rows=rows,
     )
+
+
+@dataclass
+class GraphEvalResult:
+    n: int
+    entity_recall: float  # avg fraction of expected entities surfaced by the graph path
+    rows: list = field(default_factory=list)
+
+
+def evaluate_graph(hybrid_retriever, gold: list[dict]) -> GraphEvalResult:
+    """Measure the GRAPH's contribution on relational queries: does the hybrid
+    retriever's graph path surface the expected entities? (Vector RAG alone can't
+    answer these — they need relationship traversal.)"""
+    total = 0.0
+    rows = []
+    for item in gold:
+        ctx = hybrid_retriever.retrieve(item["query"])
+        facts = " ".join(ctx.graph_facts).lower()
+        expected = item.get("expected", [])
+        found = [e for e in expected if e.lower() in facts]
+        recall = (len(found) / len(expected)) if expected else 0.0
+        total += recall
+        rows.append(
+            {
+                "query": item["query"],
+                "expected": expected,
+                "found": found,
+                "recall": recall,
+                "n_facts": len(ctx.graph_facts),
+            }
+        )
+    n = len(gold)
+    return GraphEvalResult(n=n, entity_recall=total / (n or 1), rows=rows)

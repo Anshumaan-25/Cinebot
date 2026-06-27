@@ -134,6 +134,26 @@ class GraphStore:
             name=name,
         )
 
+    def directors_for_genres(self, genres: list[str]) -> list[dict]:
+        """Directors who have worked in any of the given genres, with the subset
+        of those genres each has directed (enables 'both X and Y' reasoning)."""
+        return self._query(
+            "MATCH (p:Person)<-[:DIRECTED_BY]-(:Film)-[:BELONGS_TO_GENRE]->(g:Genre) "
+            "WHERE g.name IN $genres "
+            "WITH p, collect(DISTINCT g.name) AS genres "
+            "RETURN p.name AS director, genres ORDER BY size(genres) DESC, director",
+            genres=genres,
+        )
+
+    def all_genres(self) -> list[str]:
+        return [r["name"] for r in self._query("MATCH (g:Genre) RETURN g.name AS name ORDER BY name")]
+
+    def all_people(self) -> list[str]:
+        return [r["name"] for r in self._query("MATCH (p:Person) RETURN p.name AS name")]
+
+    def all_film_titles(self) -> list[dict]:
+        return self._query("MATCH (f:Film) RETURN f.title AS title, f.imdb_id AS imdb_id")
+
     def run_cypher(self, cypher: str, **params) -> list[dict]:
         """Run an arbitrary read query. For trusted/internal use only."""
         return self._query(cypher, **params)

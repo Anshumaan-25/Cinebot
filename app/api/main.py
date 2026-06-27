@@ -59,10 +59,11 @@ def info() -> dict:
 
 @app.post("/chat")
 def chat(req: ChatRequest):
-    """Streaming RAG answer (Part 2): retrieve top-k chunks from the vector
-    store, stream a grounded, cited Gemini answer, then list the sources.
+    """Streaming hybrid (GraphRAG) answer (Part 4): link the query to knowledge-
+    graph entities, fuse graph facts with focused vector retrieval, and stream a
+    grounded, cited Gemini answer followed by sources.
 
-    Orchestration (memory / KG / tools routing) arrives in Part 6.
+    Orchestration (memory / tools routing) arrives in Part 6.
     """
     if not settings.has_gemini:
         return JSONResponse(
@@ -71,10 +72,10 @@ def chat(req: ChatRequest):
         )
 
     # Imported lazily so the app still starts/tests without the SDK side-effects.
-    from app.rag.factory import get_rag
+    from app.rag.factory import get_hybrid_rag
 
-    rag = get_rag()
-    if rag.retriever.store.count() == 0:
+    rag = get_hybrid_rag()
+    if rag.hybrid.retriever.store.count() == 0:
         return JSONResponse(
             status_code=503,
             content={"error": "Vector index is empty. Run: python scripts/build_index.py"},
@@ -82,22 +83,29 @@ def chat(req: ChatRequest):
 
     def generate():
         try:
-            sources = rag.retrieve(req.message, k=settings.rag_top_k)
+            ctx = rag.retrieve(req.message)
         except Exception as exc:  # noqa: BLE001
-            logger.exception("retrieval failed")
+            logger.exception("hybrid retrieval failed")
             yield f"[retrieval error: {exc}]"
             return
-        if not sources:
+        if not ctx.chunks and not ctx.graph_facts:
             yield "I couldn't find anything relevant in the movie corpus."
             return
         try:
-            for token in rag.stream_answer(req.message, sources):
+            for token in rag.stream_answer(req.message, ctx):
                 yield token
         except Exception as exc:  # noqa: BLE001
             logger.exception("generation failed")
             yield f"\n[generation error: {exc}]"
-        yield "\n\nSources:\n"
-        for i, s in enumerate(sources, 1):
-            yield f"  [{i}] {s.film_title} — {s.section}\n"
+        if ctx.graph_facts:
+            yield (
+                f"\n\n[graph: {len(ctx.graph_facts)} fact(s) — linked "
+                f"{len(ctx.linked.people)} people, {len(ctx.linked.films)} films, "
+                f"{len(ctx.linked.genres)} genres]"
+            )
+        if ctx.chunks:
+            yield "\n\nSources:\n"
+            for i, s in enumerate(ctx.chunks, 1):
+                yield f"  [{i}] {s.film_title} — {s.section}\n"
 
     return StreamingResponse(generate(), media_type="text/plain")

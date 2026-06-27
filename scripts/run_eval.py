@@ -1,8 +1,9 @@
-"""Run the lite retrieval eval (Part 2): Hit@1 / Hit@k / MRR over the gold set.
+"""Run the retrieval eval: vector quality (Part 2) + graph contribution (Part 4).
 
     python scripts/run_eval.py
 
-Requires GOOGLE_API_KEY and a built index (scripts/build_index.py).
+Requires GOOGLE_API_KEY + a built index. The relational (graph) section also
+needs the Neo4j graph (scripts/build_graph.py).
 """
 
 from __future__ import annotations
@@ -13,9 +14,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.config import get_settings  # noqa: E402
-from app.evaluation.retrieval_eval import evaluate, load_gold  # noqa: E402
+from app.evaluation.retrieval_eval import evaluate, evaluate_graph, load_gold  # noqa: E402
 from app.logging_config import setup_logging  # noqa: E402
-from app.rag.factory import get_retriever, get_vector_store  # noqa: E402
+from app.rag.factory import get_hybrid_retriever, get_retriever, get_vector_store  # noqa: E402
 
 
 def main() -> int:
@@ -30,22 +31,29 @@ def main() -> int:
         return 1
 
     gold = load_gold()
-    result = evaluate(get_retriever(), gold, k=settings.rag_top_k)
+    lookup = [g for g in gold if g.get("type", "lookup") == "lookup"]
+    relational = [g for g in gold if g.get("type") == "relational"]
 
-    print("\n" + "=" * 60)
-    print("  RETRIEVAL EVAL (lite)")
-    print("=" * 60)
-    print(f"  Gold queries : {result.n}")
-    print(f"  Hit@1        : {result.hit_at_1:.0%}")
-    print(f"  Hit@{result.k}        : {result.hit_at_k:.0%}")
-    print(f"  MRR          : {result.mrr:.3f}")
-    print("  ── per query ──")
-    for r in result.rows:
-        mark = "OK  " if r["rank"] else "MISS"
-        rank = r["rank"] if r["rank"] else "-"
-        print(f"   [{mark}] rank={rank}  {r['query']}")
-        print(f"          top: {r['top']}")
-    print("=" * 60)
+    vres = evaluate(get_retriever(), lookup, k=settings.rag_top_k)
+    gres = None
+    if relational and settings.has_neo4j:
+        gres = evaluate_graph(get_hybrid_retriever(), relational)
+
+    print("\n" + "=" * 64)
+    print("  RETRIEVAL EVAL")
+    print("=" * 64)
+    print(f"  VECTOR — descriptive 'lookup' queries (n={vres.n})")
+    print(f"    Hit@1 : {vres.hit_at_1:.0%}    Hit@{vres.k} : {vres.hit_at_k:.0%}    MRR : {vres.mrr:.3f}")
+    if gres is not None:
+        print(f"\n  GRAPH — relational/multi-hop queries (n={gres.n})")
+        print(f"    entity recall : {gres.entity_recall:.0%}  (answers vector RAG alone can't surface)")
+        for r in gres.rows:
+            mark = "OK  " if r["recall"] == 1.0 else ("PART" if r["found"] else "MISS")
+            print(f"     [{mark}] {r['query']}")
+            print(f"            expected {r['expected']} -> found {r['found']}  ({r['n_facts']} graph facts)")
+    elif relational:
+        print("\n  GRAPH — skipped (Neo4j not configured)")
+    print("=" * 64)
     return 0
 
 

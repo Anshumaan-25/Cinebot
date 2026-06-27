@@ -4,10 +4,10 @@ An intelligent movie-domain chatbot that combines **Retrieval-Augmented Generati
 a **Knowledge Graph**, **long-term user memory**, and **LangGraph-orchestrated real-time
 tools**, with an **evaluation framework** to measure response quality.
 
-> **Status: Part 3 complete.** Foundation + data pipeline + **RAG** + a **Neo4j
-> knowledge graph** (Film/Person/Genre with DIRECTED_BY / ACTED_IN /
-> BELONGS_TO_GENRE; cast supplemented by Gemini extraction) are in place. Memory,
-> hybrid retrieval, orchestration and tools arrive in later parts (see roadmap).
+> **Status: Part 4 complete.** Foundation + data pipeline + **RAG** + **knowledge
+> graph** + **hybrid retrieval (GraphRAG)** — `/chat` now links query entities to
+> the graph, fuses graph facts with focused vector retrieval, and answers
+> multi-hop questions vector RAG can't. Memory, orchestration and tools next.
 
 ---
 
@@ -121,7 +121,7 @@ tests/                 # offline unit tests
 | **1** ✅ | `app/data` | Scrape → clean → chunk the movie corpus |
 | **2** ✅ | `app/rag` | Embed + Chroma vector store + retriever + streaming cited RAG + lite eval |
 | **3** ✅ | `app/kg` | Entity/relationship extraction (Gemini) → Neo4j Aura graph + querying |
-| 4 | `app/rag` | Hybrid retrieval — fuse vector + graph (GraphRAG) |
+| **4** ✅ | `app/rag` | Hybrid retrieval — entity-link → graph + vector fusion (GraphRAG) |
 | 5 | `app/memory` | Per-user long-term memory (SQLite) |
 | 6 | `app/orchestration` | LangGraph router + model/memory/RAG/tool nodes |
 | 7 | `app/tools` | Real-time movie-data tools (TMDB geo-blocked → alt source) |
