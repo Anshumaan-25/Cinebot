@@ -4,12 +4,12 @@ An intelligent movie-domain chatbot that combines **Retrieval-Augmented Generati
 a **Knowledge Graph**, **long-term user memory**, and **LangGraph-orchestrated real-time
 tools**, with an **evaluation framework** to measure response quality.
 
-> **Status: Part 7 complete.** A **LangGraph orchestration** drives `/chat`:
-> per-user **memory** recall → Groq **router** → either **hybrid GraphRAG**
+> **Status: complete (Parts 0–10).** A **LangGraph orchestration** drives the
+> chat: per-user **memory** recall → Groq **router** → either **hybrid GraphRAG**
 > retrieve *or* **live tools** (OMDB + Wikipedia search, dynamically selected) →
-> personalized **Gemini** answer (Groq fallback) → memory write. Visualize it
-> with `python scripts/show_graph.py`. Full RAGAS-style eval (Part 9) and a chat
-> UI (Part 10) remain.
+> personalized **Gemini** answer (Groq fallback) → memory write. A **vanilla-CSS
+> chat UI** is served at `/`; answer quality is measured by a **RAGAS-style LLM
+> judge**. Visualize the graph with `python scripts/show_graph.py`.
 
 ---
 
@@ -76,8 +76,9 @@ python scripts/build_graph.py           # needs NEO4J_* (+ GOOGLE_API_KEY for th
 # 9. (optional) Visualize the LangGraph orchestration (Part 6)
 python scripts/show_graph.py
 
-# 10. Run the API — POST /chat runs the full orchestration (memory + GraphRAG)
+# 10. Run the app — chat UI at / ; POST /chat runs the full orchestration
 uvicorn app.api.main:app --reload
+#   UI   http://127.0.0.1:8000/        ← open this in a browser
 #   GET  http://127.0.0.1:8000/health
 #   GET  http://127.0.0.1:8000/info
 #   POST http://127.0.0.1:8000/chat   {"message": "How did critics react to Joker?"}
@@ -114,7 +115,9 @@ app/
   orchestration/       # Part 6 — LangGraph router + nodes
   tools/               # Part 7 — live OMDB + Wikipedia search tools + runner
   evaluation/          # Part 9 — relevance / faithfulness / correctness
+  api/main.py          # also serves the chat UI at / + static assets  ← Part 10
 data/                  # generated artifacts (gitignored)
+web/                   # Part 10 — vanilla HTML/CSS/JS chat UI (index.html, style.css, app.js)
 scripts/smoke_test.py  # live provider check
 tests/                 # offline unit tests
 ```
@@ -135,7 +138,7 @@ tests/                 # offline unit tests
 | **7** ✅ | `app/tools` | Live tools — OMDB + Wikipedia search, LLM-selected (TMDB geo-blocked → these instead) |
 | **8** ✅ | `app/api` | Serving layer — streaming `/chat` over the orchestration |
 | **9** ✅ | `app/evaluation` | RAGAS-style LLM-judge — faithfulness / answer & context relevance / correctness |
-| 10 | `web/` | Demo chat UI + polish |
+| **10** ✅ | `web/` | Vanilla-CSS streaming chat UI served by FastAPI at `/` |
 
 ---
 

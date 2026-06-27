@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Movie Chatbot · Memory-Augmented GraphRAG</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">🎬</span>
+        <div>
+          <h1>Movie Chatbot</h1>
+          <p class="tagline">Hybrid GraphRAG · long-term memory · live tools · LangGraph</p>
+        </div>
+      </div>
+      <label class="user-field" title="Long-term memory is keyed by this id — change it to start a fresh user">
+        <span>user</span>
+        <input id="user-id" type="text" value="demo-user" autocomplete="off" spellcheck="false" />
+      </label>
+    </header>
+
+    <main id="messages" class="messages" aria-live="polite">
+      <div class="msg bot">
+        <div class="bubble">
+          Hi! Ask me about movies. I remember your preferences across the chat, traverse a
+          knowledge graph for relational questions, and call live tools for films outside my corpus.
+          <div class="suggestions">
+            <button class="chip" data-q="I love sci-fi and Christopher Nolan films, and I dislike horror.">Tell it your taste</button>
+            <button class="chip" data-q="Which directors have made both action and drama films?">Multi-hop graph</button>
+            <button class="chip" data-q="What is the plot of Avatar?">Corpus lookup</button>
+            <button class="chip" data-q="What is the current IMDb rating of the 2023 film Oppenheimer?">Live tool</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <form id="composer" class="composer">
+      <textarea id="input" rows="1" placeholder="Ask about a movie…  (Enter to send, Shift+Enter for newline)" autocomplete="off"></textarea>
+      <button id="send" type="submit" aria-label="Send">Send</button>
+    </form>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

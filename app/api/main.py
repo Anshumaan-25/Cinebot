@@ -10,14 +10,18 @@ Endpoints:
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from app import __version__
 from app.api.schemas import ChatRequest
 from app.config import get_settings
 from app.logging_config import setup_logging
+
+WEB_DIR = Path(__file__).resolve().parents[2] / "web"  # repo-root/web (Part 10)
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -28,8 +32,22 @@ settings.ensure_dirs()
 app = FastAPI(
     title="Memory-Augmented Chatbot with Knowledge Graph & Hybrid RAG",
     version=__version__,
-    description="Part 0 scaffold — RAG, knowledge graph, memory and tools land in later parts.",
+    description="Movie chatbot: hybrid GraphRAG + per-user memory + live tools, "
+    "orchestrated with LangGraph. A chat UI is served at /.",
 )
+
+# Part 10 — serve the static chat UI (vanilla HTML/CSS/JS).
+if WEB_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
+
+
+@app.get("/", include_in_schema=False)
+def index():
+    """The chat UI (Part 10)."""
+    page = WEB_DIR / "index.html"
+    if page.is_file():
+        return FileResponse(page)
+    return JSONResponse({"message": "Chat UI not found. See /docs for the API."})
 
 
 @app.get("/health")
@@ -53,7 +71,7 @@ def info() -> dict:
             "routing": settings.groq_model,
             "embedding": settings.embedding_model,
         },
-        "status": "Part 0 scaffold — RAG / KG / memory / orchestration not yet wired",
+        "status": "LangGraph orchestration live — memory + hybrid GraphRAG + live tools; chat UI at /",
     }
 
 
