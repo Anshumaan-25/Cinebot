@@ -43,7 +43,21 @@ def main() -> int:
 
     embedder = get_embedder()
     started = time.monotonic()
-    vectors = embedder.embed_documents([c.text for c in chunks])
+    try:
+        vectors = embedder.embed_documents([c.text for c in chunks])
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        if "RESOURCE_EXHAUSTED" in msg or "429" in msg or "quota" in msg.lower():
+            print(
+                "\nHit the free-tier embedding quota before finishing. Already-embedded\n"
+                "chunks are cached, so just re-run this script to resume from where it\n"
+                "stopped — after the daily quota resets, or with a fresh GOOGLE_API_KEY\n"
+                "from another Google project. (Free tier: 1000 embed requests/day, and\n"
+                "each chunk is one request.)",
+                file=sys.stderr,
+            )
+            return 1
+        raise
     embed_s = time.monotonic() - started
 
     store = get_vector_store()
