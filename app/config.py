@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     neo4j_database: Optional[str] = None   # None -> use the connection's home database (Aura-safe)
     kg_min_interval: float = 4.0   # seconds between Gemini cast-extraction calls (free-tier RPM)
 
+    # --- Dynamic tools (Part 7) ---
+    tool_summary_chars: int = 1200   # max chars of any single live tool result
+
     # --- Paths ---
     data_dir: Path = Path("./data")
     sqlite_path: Path = Path("./data/memory.db")
@@ -105,6 +108,14 @@ class Settings(BaseSettings):
     @property
     def cast_cache_dir(self) -> Path:
         return self.cache_dir / "cast_extractions"
+
+    @property
+    def tools_omdb_cache_dir(self) -> Path:
+        return self.cache_dir / "tools" / "omdb"
+
+    @property
+    def tools_wikipedia_cache_dir(self) -> Path:
+        return self.cache_dir / "tools" / "wikipedia"
 
     def ensure_dirs(self) -> None:
         """Create the data directory tree if it does not yet exist."""

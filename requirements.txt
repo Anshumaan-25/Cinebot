@@ -29,6 +29,9 @@ neo4j>=5.0.0
 langgraph>=0.2.0
 grandalf>=0.8           # ASCII rendering of the graph (scripts/show_graph.py)
 
+# --- Part 7: dynamic tools ---
+# (no new deps — live OMDB + Wikipedia search reuse httpx + beautifulsoup4)
+
 # --- Dev / testing ---
 pytest>=8.0.0
 

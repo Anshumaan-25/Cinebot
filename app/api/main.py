@@ -94,6 +94,8 @@ def chat(req: ChatRequest):
         passages = final_state.get("passages", [])
         if route:
             yield f"\n\n[route: {route}]"
+        if final_state.get("tool_results"):
+            yield "\n[live tools consulted: OMDB / Wikipedia]"
         if passages:
             yield "\n\nSources:\n"
             for i, p in enumerate(passages, 1):

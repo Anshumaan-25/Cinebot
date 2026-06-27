@@ -23,9 +23,11 @@ except Exception:  # pragma: no cover - very old langgraph
 # ---------------- router ----------------
 _ROUTER_PROMPT = (
     "Classify the user's message into exactly one label:\n"
-    "KNOWLEDGE - questions about movies/films/actors/directors/genres/plots/reviews "
-    "(answerable from a movie knowledge base).\n"
-    "REALTIME - needs current/live data (what is playing now, latest releases, today's box office).\n"
+    "KNOWLEDGE - questions about well-known movies/films/actors/directors/genres/plots/reviews "
+    "(answerable from a curated movie knowledge base).\n"
+    "REALTIME - needs live or out-of-corpus data: current IMDb ratings, what is playing now, "
+    "latest box office, or a specific recent/upcoming/obscure film likely missing from a fixed "
+    "knowledge base.\n"
     "CHITCHAT - greetings, statements of preference or opinion, or anything not needing retrieval.\n"
     "Respond with ONLY the label.\n\nMessage: {query}"
 )

@@ -4,10 +4,12 @@ An intelligent movie-domain chatbot that combines **Retrieval-Augmented Generati
 a **Knowledge Graph**, **long-term user memory**, and **LangGraph-orchestrated real-time
 tools**, with an **evaluation framework** to measure response quality.
 
-> **Status: Part 6 complete.** A **LangGraph orchestration** now drives `/chat`:
-> per-user **memory** recall → Groq **router** → **hybrid GraphRAG** retrieve →
-> personalized **Gemini** answer (Groq fallback) → memory write. Visualize it with
-> `python scripts/show_graph.py`. Dynamic tools (Part 7) and full eval (Part 9) remain.
+> **Status: Part 7 complete.** A **LangGraph orchestration** drives `/chat`:
+> per-user **memory** recall → Groq **router** → either **hybrid GraphRAG**
+> retrieve *or* **live tools** (OMDB + Wikipedia search, dynamically selected) →
+> personalized **Gemini** answer (Groq fallback) → memory write. Visualize it
+> with `python scripts/show_graph.py`. Full RAGAS-style eval (Part 9) and a chat
+> UI (Part 10) remain.
 
 ---
 
@@ -107,7 +109,7 @@ app/
   kg/                  # Part 3 — Neo4j knowledge graph (graph_store, extraction)
   memory/              # Part 5 — long-term memory (SQLite)
   orchestration/       # Part 6 — LangGraph router + nodes
-  tools/               # Part 7 — live data tools
+  tools/               # Part 7 — live OMDB + Wikipedia search tools + runner
   evaluation/          # Part 9 — relevance / faithfulness / correctness
 data/                  # generated artifacts (gitignored)
 scripts/smoke_test.py  # live provider check
@@ -127,10 +129,10 @@ tests/                 # offline unit tests
 | **4** ✅ | `app/rag` | Hybrid retrieval — entity-link → graph + vector fusion (GraphRAG) |
 | **5** ✅ | `app/memory` | Per-user long-term memory — preferences + history (SQLite) |
 | **6** ✅ | `app/orchestration` | LangGraph: memory/router/retrieve/tools/generate nodes + conditional routing |
-| 7 | `app/tools` | Real-time movie-data tools (TMDB geo-blocked → alt source) |
-| 8 | `app/api` | Full serving layer (sessions, history, streaming) |
-| 9 | `app/evaluation` | Context relevance / faithfulness / answer correctness |
-| 10 | — | Demo UI + logging/monitoring polish |
+| **7** ✅ | `app/tools` | Live tools — OMDB + Wikipedia search, LLM-selected (TMDB geo-blocked → these instead) |
+| **8** ✅ | `app/api` | Serving layer — streaming `/chat` over the orchestration |
+| 9 | `app/evaluation` | RAGAS-style context relevance / faithfulness / answer correctness |
+| 10 | `web/` | Demo chat UI + polish |
 
 ---
 

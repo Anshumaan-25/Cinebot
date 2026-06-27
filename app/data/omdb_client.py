@@ -50,6 +50,10 @@ class OMDBClient:
             params["y"] = str(year)
         return self._get(params)
 
+    def search(self, title: str) -> dict:
+        """Title search (OMDB ``s=``) -> {"Search": [{Title, Year, imdbID, ...}]}."""
+        return self._get({"s": title, "type": "movie"})
+
     @staticmethod
     def found(response: dict) -> bool:
         return bool(response) and response.get("Response") == "True"
