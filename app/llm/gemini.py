@@ -1,4 +1,4 @@
-"""Gemini 2.0 Flash chat client (Google AI Studio free tier)."""
+"""Gemini 2.5 Flash chat client (Google AI Studio free tier)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from app.llm.retry import with_backoff
 class GeminiLLM(LLMClient):
     """:class:`LLMClient` backed by Gemini via the ``google-genai`` SDK."""
 
-    def __init__(self, api_key: str | None, model: str = "gemini-2.0-flash") -> None:
+    def __init__(self, api_key: str | None, model: str = "gemini-2.5-flash") -> None:
         if not api_key:
             raise RuntimeError(
                 "GOOGLE_API_KEY is not set. Add it to your .env "

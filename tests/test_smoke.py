@@ -36,7 +36,7 @@ def test_settings_defaults():
     from app.config import Settings
 
     s = Settings(_env_file=None)  # ignore any real .env
-    assert s.gemini_model == "gemini-2.0-flash"
+    assert s.gemini_model == "gemini-2.5-flash"
     assert s.groq_model == "llama-3.3-70b-versatile"
     assert s.embedding_model == "gemini-embedding-001"
     assert s.embedding_dim == 768

@@ -30,7 +30,7 @@ Scoped to **movies** (bounded but relationship-rich, ideal for a knowledge graph
 
 | Concern | Choice |
 | --- | --- |
-| Generation / reasoning | **Gemini 2.0 Flash** (Google AI Studio) |
+| Generation / reasoning | **Gemini 2.5 Flash** (Google AI Studio) |
 | Embeddings (corpus **and** query) | **text-embedding-004** — single model, no mixing |
 | Fast routing | **Groq · Llama 3.3 70B** |
 | Vector DB | **Chroma** — native metadata filtering on imdb_id/section (Part 2) |
@@ -89,7 +89,7 @@ app/
   logging_config.py
   llm/                 # provider-agnostic LLM + embedding layer  ← Part 0
     base.py            #   LLMClient interface + ChatMessage
-    gemini.py          #   Gemini 2.0 Flash client
+    gemini.py          #   Gemini 2.5 Flash client
     groq_llm.py        #   Groq Llama 3.3 70B client (routing)
     embeddings.py      #   text-embedding-004 (doc + query), batched
     embedding_cache.py #   SQLite cache so we never re-spend quota

@@ -18,7 +18,7 @@ from app.llm.groq_llm import GroqLLM
 
 @lru_cache
 def get_llm() -> LLMClient:
-    """Main generation/reasoning model (Gemini 2.0 Flash)."""
+    """Main generation/reasoning model (Gemini 2.5 Flash)."""
     s = get_settings()
     return GeminiLLM(s.google_api_key, s.gemini_model)
 

@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     )
 
     # --- Provider API keys (free tier) ---
-    google_api_key: Optional[str] = None  # Gemini 2.0 Flash + text-embedding-004
+    google_api_key: Optional[str] = None  # Gemini 2.5 Flash + gemini-embedding-001
     groq_api_key: Optional[str] = None     # Llama 3.3 70B (routing)
     omdb_api_key: Optional[str] = None      # structured film data (omdbapi.com)
 
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     neo4j_password: Optional[str] = None
 
     # --- Models ---
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-2.5-flash"  # 2.0-flash has 0 free-tier quota on newer projects
     groq_model: str = "llama-3.3-70b-versatile"
     embedding_model: str = "gemini-embedding-001"  # text-embedding-004 retired from AI Studio
     embedding_dim: int = 768
