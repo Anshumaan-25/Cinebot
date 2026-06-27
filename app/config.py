@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     # --- Models ---
     gemini_model: str = "gemini-2.0-flash"
     groq_model: str = "llama-3.3-70b-versatile"
-    embedding_model: str = "text-embedding-004"
+    embedding_model: str = "gemini-embedding-001"  # text-embedding-004 retired from AI Studio
     embedding_dim: int = 768
 
     # --- Data pipeline (Part 1) ---
