@@ -4,10 +4,10 @@ An intelligent movie-domain chatbot that combines **Retrieval-Augmented Generati
 a **Knowledge Graph**, **long-term user memory**, and **LangGraph-orchestrated real-time
 tools**, with an **evaluation framework** to measure response quality.
 
-> **Status: Part 5 complete.** Foundation + data pipeline + **RAG** + **knowledge
-> graph** + **hybrid GraphRAG** + **long-term memory** (per-user preferences +
-> history in SQLite, with LLM-based preference extraction). LangGraph
-> orchestration and dynamic tools are next.
+> **Status: Part 6 complete.** A **LangGraph orchestration** now drives `/chat`:
+> per-user **memory** recall → Groq **router** → **hybrid GraphRAG** retrieve →
+> personalized **Gemini** answer (Groq fallback) → memory write. Visualize it with
+> `python scripts/show_graph.py`. Dynamic tools (Part 7) and full eval (Part 9) remain.
 
 ---
 
@@ -68,7 +68,10 @@ python scripts/run_eval.py              # Hit@1 / Hit@5 / MRR
 # 8. Build the knowledge graph (Part 3) -> Neo4j Aura
 python scripts/build_graph.py           # needs NEO4J_* (+ GOOGLE_API_KEY for the cast supplement)
 
-# 9. Run the API — POST /chat streams a grounded, cited RAG answer
+# 9. (optional) Visualize the LangGraph orchestration (Part 6)
+python scripts/show_graph.py
+
+# 10. Run the API — POST /chat runs the full orchestration (memory + GraphRAG)
 uvicorn app.api.main:app --reload
 #   GET  http://127.0.0.1:8000/health
 #   GET  http://127.0.0.1:8000/info
@@ -123,7 +126,7 @@ tests/                 # offline unit tests
 | **3** ✅ | `app/kg` | Entity/relationship extraction (Gemini) → Neo4j Aura graph + querying |
 | **4** ✅ | `app/rag` | Hybrid retrieval — entity-link → graph + vector fusion (GraphRAG) |
 | **5** ✅ | `app/memory` | Per-user long-term memory — preferences + history (SQLite) |
-| 6 | `app/orchestration` | LangGraph router + model/memory/RAG/tool nodes |
+| **6** ✅ | `app/orchestration` | LangGraph: memory/router/retrieve/tools/generate nodes + conditional routing |
 | 7 | `app/tools` | Real-time movie-data tools (TMDB geo-blocked → alt source) |
 | 8 | `app/api` | Full serving layer (sessions, history, streaming) |
 | 9 | `app/evaluation` | Context relevance / faithfulness / answer correctness |

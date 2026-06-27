@@ -59,53 +59,44 @@ def info() -> dict:
 
 @app.post("/chat")
 def chat(req: ChatRequest):
-    """Streaming hybrid (GraphRAG) answer (Part 4): link the query to knowledge-
-    graph entities, fuse graph facts with focused vector retrieval, and stream a
-    grounded, cited Gemini answer followed by sources.
+    """Streaming answer via the LangGraph orchestration (Part 6).
 
-    Orchestration (memory / tools routing) arrives in Part 6.
+    The graph recalls per-user memory, routes the query (Groq), retrieves hybrid
+    GraphRAG context, generates a personalized cited answer (Gemini, Groq
+    fallback), and persists the turn — so memory personalizes every reply.
     """
-    if not settings.has_gemini:
+    if not (settings.has_gemini or settings.has_groq):
         return JSONResponse(
             status_code=503,
-            content={"error": "GOOGLE_API_KEY not set — needed for retrieval + generation."},
+            content={"error": "No LLM configured (set GOOGLE_API_KEY and/or GROQ_API_KEY)."},
         )
 
     # Imported lazily so the app still starts/tests without the SDK side-effects.
-    from app.rag.factory import get_hybrid_rag
+    from app.orchestration.factory import get_chat_graph
 
-    rag = get_hybrid_rag()
-    if rag.hybrid.retriever.store.count() == 0:
-        return JSONResponse(
-            status_code=503,
-            content={"error": "Vector index is empty. Run: python scripts/build_index.py"},
-        )
+    graph = get_chat_graph()
+    initial = {"user_id": req.user_id, "query": req.message}
 
     def generate():
+        final_state: dict = {}
         try:
-            ctx = rag.retrieve(req.message)
+            for mode, data in graph.stream(initial, stream_mode=["custom", "values"]):
+                if mode == "custom":
+                    yield data  # an answer token
+                elif mode == "values":
+                    final_state = data  # latest full state (last = final)
         except Exception as exc:  # noqa: BLE001
-            logger.exception("hybrid retrieval failed")
-            yield f"[retrieval error: {exc}]"
+            logger.exception("orchestration failed")
+            yield f"\n[error: {exc}]"
             return
-        if not ctx.chunks and not ctx.graph_facts:
-            yield "I couldn't find anything relevant in the movie corpus."
-            return
-        try:
-            for token in rag.stream_answer(req.message, ctx):
-                yield token
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("generation failed")
-            yield f"\n[generation error: {exc}]"
-        if ctx.graph_facts:
-            yield (
-                f"\n\n[graph: {len(ctx.graph_facts)} fact(s) — linked "
-                f"{len(ctx.linked.people)} people, {len(ctx.linked.films)} films, "
-                f"{len(ctx.linked.genres)} genres]"
-            )
-        if ctx.chunks:
+
+        route = final_state.get("route")
+        passages = final_state.get("passages", [])
+        if route:
+            yield f"\n\n[route: {route}]"
+        if passages:
             yield "\n\nSources:\n"
-            for i, s in enumerate(ctx.chunks, 1):
-                yield f"  [{i}] {s.film_title} — {s.section}\n"
+            for i, p in enumerate(passages, 1):
+                yield f"  [{i}] {p['film_title']} — {p['section']}\n"
 
     return StreamingResponse(generate(), media_type="text/plain")
