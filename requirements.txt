@@ -32,6 +32,10 @@ grandalf>=0.8           # ASCII rendering of the graph (scripts/show_graph.py)
 # --- Part 7: dynamic tools ---
 # (no new deps — live OMDB + Wikipedia search reuse httpx + beautifulsoup4)
 
+# --- Part 9: evaluation ---
+# (no new deps — a lightweight LLM-judge implements the RAGAS-style metrics on
+#  our existing Groq client, avoiding the heavy ragas/datasets dependency tree)
+
 # --- Dev / testing ---
 pytest>=8.0.0
 
@@ -42,4 +46,5 @@ pytest>=8.0.0
 # Part 2 (vector store/RAG):  DONE — chromadb added above
 # Part 3 (knowledge graph):   DONE — neo4j added above
 # Part 6 (orchestration):     DONE — langgraph + grandalf added above
-# Part 9 (evaluation):        ragas  datasets
+# Part 7 (dynamic tools):     DONE — no new deps
+# Part 9 (evaluation):        DONE — custom LLM judge, no new deps

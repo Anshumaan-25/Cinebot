@@ -1,13 +1,13 @@
 [
-  {"query": "What is the plot of Avatar?", "type": "lookup", "imdb_id": "tt0499549", "note": "plot"},
-  {"query": "Who directed Titanic?", "type": "lookup", "imdb_id": "tt0120338", "note": "director"},
+  {"query": "What is the plot of Avatar?", "type": "lookup", "imdb_id": "tt0499549", "note": "plot", "reference": "On the moon Pandora, a paraplegic Marine named Jake Sully operates a Na'vi avatar; he comes to side with the Na'vi against the human mining operation seeking the mineral unobtanium."},
+  {"query": "Who directed Titanic?", "type": "lookup", "imdb_id": "tt0120338", "note": "director", "reference": "Titanic (1997) was directed by James Cameron."},
   {"query": "How did critics react to Joker?", "type": "lookup", "imdb_id": "tt7286456", "note": "reception"},
   {"query": "What is the Barbie movie about?", "type": "lookup", "imdb_id": "tt1517268", "note": "plot"},
   {"query": "Tell me about the production of Avengers: Endgame", "type": "lookup", "imdb_id": "tt4154796", "note": "production"},
   {"query": "What awards did Top Gun: Maverick receive?", "type": "lookup", "imdb_id": "tt1745960", "note": "accolades"},
-  {"query": "Who stars in Black Panther?", "type": "lookup", "imdb_id": "tt1825683", "note": "cast"},
-  {"query": "How much did Jurassic World make at the box office?", "type": "lookup", "imdb_id": "tt0369610", "note": "box office"},
-  {"query": "What is the story of Frozen, the Disney film?", "type": "lookup", "imdb_id": "tt2294629", "note": "plot"},
+  {"query": "Who stars in Black Panther?", "type": "lookup", "imdb_id": "tt1825683", "note": "cast", "reference": "Black Panther (2018) stars Chadwick Boseman as T'Challa, alongside Michael B. Jordan, Lupita Nyong'o, Danai Gurira and Letitia Wright."},
+  {"query": "How much did Jurassic World make at the box office?", "type": "lookup", "imdb_id": "tt0369610", "note": "box office", "reference": "Jurassic World (2015) grossed over $1.6 billion worldwide."},
+  {"query": "What is the story of Frozen, the Disney film?", "type": "lookup", "imdb_id": "tt2294629", "note": "plot", "reference": "Princess Anna, with the ice harvester Kristoff, sets out to find her estranged sister Elsa, whose magical ice powers have trapped the kingdom of Arendelle in eternal winter."},
   {"query": "Tell me about the James Bond film Skyfall", "type": "lookup", "imdb_id": "tt1074638", "note": "general"},
 
   {"query": "Which directors have made both Action and Fantasy films?", "type": "relational", "expected": ["James Cameron", "J.J. Abrams"], "note": "genre intersection (multi-hop)"},

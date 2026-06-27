@@ -67,6 +67,9 @@ python scripts/build_index.py           # needs GOOGLE_API_KEY (text-embedding-0
 # 7. (optional) Measure retrieval quality on the gold set
 python scripts/run_eval.py              # Hit@1 / Hit@5 / MRR
 
+# 7b. (optional) RAGAS-style answer quality, judged by an LLM (Groq)
+python scripts/run_ragas_eval.py --generator groq   # faithfulness / relevance / correctness
+
 # 8. Build the knowledge graph (Part 3) -> Neo4j Aura
 python scripts/build_graph.py           # needs NEO4J_* (+ GOOGLE_API_KEY for the cast supplement)
 
@@ -131,7 +134,7 @@ tests/                 # offline unit tests
 | **6** ✅ | `app/orchestration` | LangGraph: memory/router/retrieve/tools/generate nodes + conditional routing |
 | **7** ✅ | `app/tools` | Live tools — OMDB + Wikipedia search, LLM-selected (TMDB geo-blocked → these instead) |
 | **8** ✅ | `app/api` | Serving layer — streaming `/chat` over the orchestration |
-| 9 | `app/evaluation` | RAGAS-style context relevance / faithfulness / answer correctness |
+| **9** ✅ | `app/evaluation` | RAGAS-style LLM-judge — faithfulness / answer & context relevance / correctness |
 | 10 | `web/` | Demo chat UI + polish |
 
 ---
