@@ -42,6 +42,15 @@ if WEB_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
 
+@app.middleware("http")
+async def _revalidate_static(request, call_next):
+    """Make browsers revalidate UI assets so edits show up without a hard refresh."""
+    response = await call_next(request)
+    if request.url.path.startswith("/static"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.get("/", include_in_schema=False)
 def index():
     """The chat UI (Part 10)."""
