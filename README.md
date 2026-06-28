@@ -43,6 +43,76 @@ Scoped to **movies** (bounded but relationship-rich, ideal for a knowledge graph
 
 ---
 
+## How it works
+
+The system has two halves: an **offline build** that turns raw movie data into
+searchable artifacts, and an **online serve** path where every chat turn flows
+through a LangGraph state machine.
+
+### 1. Build time (run once, produces artifacts)
+
+```
+Wikipedia 'highest-grossing films'  ─┐
+   → IMDb id via Wikidata (P345)     ├─►  films.jsonl + chunks.jsonl   (Part 1)
+   → OMDB details + Wikipedia article ┘         │
+                                                 ├─►  Chroma vectors   (Part 2, gemini-embedding-001)
+                                                 └─►  Neo4j graph      (Part 3, Gemini cast extraction)
+```
+
+Everything is keyed by **`imdb_id`**, so the vector store and the knowledge
+graph describe the same entities and can be fused later.
+
+### 2. Serve time — one chat turn through the LangGraph
+
+```
+            ┌──────────────────────────────────────────────────────────┐
+START ─► recall ─► router ─►│ retrieve  (hybrid GraphRAG)               │─► generate ─► persist ─► END
+         (memory) (Groq)    │ tools     (live OMDB / Wikipedia search)  │   (Gemini→     (memory
+                            │ generate  (chit-chat / preferences)       │    Groq)        write)
+            └──────────────────────────────────────────────────────────┘
+```
+
+- **recall** — loads the user's stored preferences + recent history from SQLite
+  and injects them into the prompt, so every answer is personalized.
+- **router** — a fast Groq (Llama 3.3 70B) classifier labels the message
+  `KNOWLEDGE` → *retrieve*, `REALTIME` → *tools*, or `CHITCHAT` → *generate*, and
+  the graph branches on that label.
+- **retrieve (hybrid GraphRAG)** — links the query to *known* graph entities
+  (people / films / genres) with **no extra LLM call**, runs structured Cypher
+  lookups (filmography, cast, genre intersections for "both X and Y" questions),
+  and runs a vector search **focused on the linked films' `imdb_id`s**. Graph
+  facts + passages are fused into one grounded context.
+- **tools** — for live or out-of-corpus questions, Groq picks which tools to call
+  and a clean search term; **OMDB** (live rating / cast / plot) and **Wikipedia**
+  (article summary) run and their results join the context.
+- **generate** — Gemini 2.5 Flash writes the answer from memory + graph facts +
+  passages + tool results, citing passages as `[1]`, `[2]`. If Gemini's daily
+  quota is spent it transparently **falls back to Groq** (production stays Gemini).
+- **persist** — a Groq extractor pulls durable preferences from the turn and
+  writes them (deduped) back to SQLite for next time.
+
+### 3. Measuring quality (Part 9)
+
+Two complementary evals: a deterministic **retrieval** eval (Hit@1 / Hit@5 / MRR
++ graph entity recall, no LLM) and a **RAGAS-style** eval where an LLM judge
+(Groq) scores generated answers for faithfulness, answer & context relevance, and
+answer correctness against gold references.
+
+### Design principles
+
+- **Grounded where it counts.** Factual claims (plots, cast, box office, who
+  directed what) are answered from the corpus + graph with citations;
+  recommendations/opinions blend that context with the model's general film
+  knowledge. The UI only lists a passage as a *Source* when the answer cited it.
+- **Free-tier resilience.** No paid fallback exists, so embeddings are cached to
+  SQLite, every API call retries with backoff, and the generator degrades from
+  Gemini → Groq on quota rather than failing.
+- **Dependency-injected graph.** Nodes close over injected services, so the whole
+  orchestration is testable with fakes and renderable (`scripts/show_graph.py`)
+  without any live service.
+
+---
+
 ## Quickstart
 
 ```bash
