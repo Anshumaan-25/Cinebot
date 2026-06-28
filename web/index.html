@@ -3,16 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Movie Chatbot · Memory-Augmented GraphRAG</title>
+  <title>CineMind · Memory-Augmented Movie Chatbot</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
+  <!-- ambient animated background -->
+  <div class="aurora" aria-hidden="true">
+    <span class="blob b1"></span>
+    <span class="blob b2"></span>
+    <span class="blob b3"></span>
+  </div>
+
   <div class="app">
     <header class="topbar">
       <div class="brand">
         <span class="logo">🎬</span>
         <div>
-          <h1>Movie Chatbot</h1>
+          <h1>CineMind</h1>
           <p class="tagline">Hybrid GraphRAG · long-term memory · live tools · LangGraph</p>
         </div>
       </div>
@@ -24,22 +31,42 @@
 
     <main id="messages" class="messages" aria-live="polite">
       <div class="msg bot">
+        <div class="avatar">🍿</div>
         <div class="bubble">
-          Hi! Ask me about movies. I remember your preferences across the chat, traverse a
-          knowledge graph for relational questions, and call live tools for films outside my corpus.
+          <div class="md">
+            Hi! I'm <strong>CineMind</strong>. Ask me about movies — I remember your taste across
+            the chat, traverse a knowledge graph for relational questions, and call live tools for
+            films outside my corpus.
+          </div>
           <div class="suggestions">
-            <button class="chip" data-q="I love sci-fi and Christopher Nolan films, and I dislike horror.">Tell it your taste</button>
-            <button class="chip" data-q="Which directors have made both action and drama films?">Multi-hop graph</button>
-            <button class="chip" data-q="What is the plot of Avatar?">Corpus lookup</button>
-            <button class="chip" data-q="What is the current IMDb rating of the 2023 film Oppenheimer?">Live tool</button>
+            <button class="chip" data-q="I love sci-fi and Christopher Nolan films, and I dislike horror.">
+              <span class="chip-ico">🎯</span> Tell it your taste
+            </button>
+            <button class="chip" data-q="Which directors have made both action and drama films?">
+              <span class="chip-ico">🕸️</span> Multi-hop graph
+            </button>
+            <button class="chip" data-q="What is the plot of Avatar?">
+              <span class="chip-ico">🔍</span> Corpus lookup
+            </button>
+            <button class="chip" data-q="What is the current IMDb rating of the 2023 film Oppenheimer?">
+              <span class="chip-ico">⚡</span> Live tool
+            </button>
           </div>
         </div>
       </div>
     </main>
 
     <form id="composer" class="composer">
-      <textarea id="input" rows="1" placeholder="Ask about a movie…  (Enter to send, Shift+Enter for newline)" autocomplete="off"></textarea>
-      <button id="send" type="submit" aria-label="Send">Send</button>
+      <div class="input-wrap">
+        <textarea id="input" rows="1"
+          placeholder="Ask about a movie…  (Enter to send · Shift+Enter for newline)"
+          autocomplete="off"></textarea>
+      </div>
+      <button id="send" type="submit" aria-label="Send">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+        </svg>
+      </button>
     </form>
   </div>
 
