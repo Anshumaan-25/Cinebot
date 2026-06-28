@@ -10,6 +10,7 @@ Endpoints:
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -108,15 +109,20 @@ def chat(req: ChatRequest):
             yield f"\n[error: {exc}]"
             return
 
+        answer = final_state.get("answer") or ""
         route = final_state.get("route")
         passages = final_state.get("passages", [])
         if route:
             yield f"\n\n[route: {route}]"
         if final_state.get("tool_results"):
             yield "\n[live tools consulted: OMDB / Wikipedia]"
-        if passages:
+        # Only list passages the answer actually cited ([1], [2], …) — avoids a
+        # misleading "Sources" list on answers that lean on general knowledge.
+        cited = {int(n) for n in re.findall(r"\[(\d+)\]", answer)}
+        shown = [(i, p) for i, p in enumerate(passages, 1) if i in cited]
+        if shown:
             yield "\n\nSources:\n"
-            for i, p in enumerate(passages, 1):
+            for i, p in shown:
                 yield f"  [{i}] {p['film_title']} — {p['section']}\n"
 
     return StreamingResponse(generate(), media_type="text/plain")
