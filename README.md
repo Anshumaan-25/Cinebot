@@ -13,6 +13,7 @@ tools**, with an **evaluation framework** to measure response quality.
 
 ---
 
+
 ## Domain & data sources
 
 Scoped to **movies** (bounded but relationship-rich, ideal for a knowledge graph):
